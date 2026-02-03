@@ -1,0 +1,1046 @@
+
+
+const { Celebraty } = require("../models/celebraty-model");
+const { Language } = require("../models/language-model");
+const Professionalmaster = require("../models/professionalmaster-model");
+const { SocialLink } = require("../models/sociallink-model");
+const { Moviev } = require("../models/moviev-model");
+const { Series } = require("../models/series-model");
+const { Positions } = require("../models/positions-model");
+const { Election } = require("../models/election-model");
+const Timeline = require("../models/timeline-model");
+const { Triviaentries } = require("../models/triviaentries-model");
+const { SectionTemplate } = require("../models/sectiontemplate-model");
+const SectionMaster = require("../models/sectionmaster-model");
+const CelebratySection = require("../models/celebratysection-model");
+const createHttpError = require("http-errors");
+const generateSlug = require("../utils/helper/slugHelper");
+const { syncCelebritySections } = require("../controllers/profession-controller");
+const fs = require("fs");
+const path = require("path");
+const { PROJECT_ROOT } = require("../utils/upload");
+
+/**
+ * Get profession options for dropdown
+ */
+const professionsOptions = async (req, res, next) => {
+  try {
+    const professions = await Professionalmaster.find({ status: 1 });
+    
+    return res.status(200).json({
+      success: true,
+      message: "Professions retrieved successfully",
+      data: professions,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get language options for dropdown
+ */
+const languageOptions = async (req, res, next) => {
+  try {
+    const languages = await Language.find({ status: 1 });
+    
+    return res.status(200).json({
+      success: true,
+      message: "Languages retrieved successfully",
+      data: languages,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get social link options for dropdown
+ */
+const sociallist = async (req, res, next) => {
+  try {
+    const socialLinks = await SocialLink.find({ status: 1 });
+    
+    return res.status(200).json({
+      success: true,
+      message: "Social links retrieved successfully",
+      data: socialLinks,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get professions with section templates
+ */
+const getProfessions = async (req, res, next) => {
+  try {
+    const professions = await Professionalmaster.find({}, "_id name sectiontemplate");
+    
+    return res.status(200).json({
+      success: true,
+      message: "Professions retrieved successfully",
+      data: professions,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get section templates
+ */
+const getSectionTemplates = async (req, res, next) => {
+  try {
+    const templates = await SectionTemplate.find({}, "_id title sections");
+    
+    return res.status(200).json({
+      success: true,
+      message: "Section templates retrieved successfully",
+      data: templates,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get section masters
+ */
+const getSectionMasters = async (req, res, next) => {
+  try {
+    const sectionMasters = await SectionMaster.find().sort({ createdAt: -1 });
+    
+    return res.status(200).json({
+      success: true,
+      message: "Section masters retrieved successfully",
+      data: sectionMasters,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+const { processCelebrityFiles } = require("../utils/upload"); // ✅ centralized helper
+
+/**
+ * @desc    Add new celebrity
+ * @route   POST /api/celebraty/add
+ * @access  Private
+ */
+const addcelebraty = async (req, res, next) => {
+  try {
+    const {
+      identityProfile,
+      personalDetails,
+      familyRelationships,
+      professionalIdentity,
+      locationPresence,
+      publicAttributes,
+      socialLinks,
+      seoMetadata,
+      adminControls,
+    } = req.body;
+
+    const createdBy = req.user.userId;
+
+    // ==================== VALIDATION ====================
+    if (!identityProfile || !identityProfile.name) {
+      throw createHttpError(400, "Celebrity name is required");
+    }
+
+    if (!professionalIdentity?.professions || professionalIdentity.professions.length === 0) {
+      throw createHttpError(400, "At least one profession is required");
+    }
+
+    if (!professionalIdentity?.primaryProfession) {
+      throw createHttpError(400, "Primary profession is required");
+    }
+
+    // ==================== SLUG ====================
+    const finalSlug = identityProfile.slug || generateSlug({ name: identityProfile.name });
+
+    // ==================== DUPLICATE CHECKS ====================
+    const existingName = await Celebraty.findOne({
+      "identityProfile.name": { $regex: new RegExp(`^${identityProfile.name}$`, "i") },
+    });
+    if (existingName) {
+      throw createHttpError(400, "Celebrity with this name already exists");
+    }
+
+    const existingSlug = await Celebraty.findOne({ "identityProfile.slug": finalSlug });
+    if (existingSlug) {
+      throw createHttpError(409, "Slug already exists");
+    }
+
+    // Check old slugHistory for conflicts
+    const existingInHistory = await Celebraty.findOne({
+      "identityProfile.slugHistory.slug": finalSlug,
+    });
+    if (existingInHistory) {
+      throw createHttpError(409, "Slug conflicts with historical slug");
+    }
+
+    // ==================== PARSE JSON FIELDS ====================
+    const parseProfessions =
+      typeof professionalIdentity?.professions === "string"
+        ? JSON.parse(professionalIdentity.professions)
+        : professionalIdentity?.professions || [];
+
+    const parseLanguages =
+      typeof professionalIdentity?.languages === "string"
+        ? JSON.parse(professionalIdentity.languages)
+        : professionalIdentity?.languages || [];
+
+    const parseSections =
+      typeof professionalIdentity?.sections === "string"
+        ? JSON.parse(professionalIdentity.sections)
+        : professionalIdentity?.sections || [];
+
+    const parseSocialLinks =
+      typeof socialLinks === "string" ? JSON.parse(socialLinks) : socialLinks || [];
+
+    const parseTags =
+      typeof seoMetadata?.tags === "string"
+        ? JSON.parse(seoMetadata.tags)
+        : seoMetadata?.tags || [];
+
+    const parseSeoKeywords =
+      typeof seoMetadata?.seoKeywords === "string"
+        ? JSON.parse(seoMetadata.seoKeywords)
+        : seoMetadata?.seoKeywords || [];
+
+    const parseKnownForRegion =
+      typeof locationPresence?.knownForRegion === "string"
+        ? JSON.parse(locationPresence.knownForRegion)
+        : locationPresence?.knownForRegion || [];
+
+    const parseGallery =
+      typeof identityProfile?.gallery === "string"
+        ? JSON.parse(identityProfile.gallery)
+        : identityProfile?.gallery || [];
+
+    const parseChildren =
+      typeof familyRelationships?.children === "string"
+        ? JSON.parse(familyRelationships.children)
+        : familyRelationships?.children || [];
+
+    const parseSiblings =
+      typeof familyRelationships?.siblings === "string"
+        ? JSON.parse(familyRelationships.siblings)
+        : familyRelationships?.siblings || [];
+
+    // ==================== VALIDATE PRIMARY PROFESSION ====================
+    if (!parseProfessions.includes(professionalIdentity.primaryProfession)) {
+      throw createHttpError(
+        400,
+        "Primary profession must be one of the selected professions"
+      );
+    }
+
+    // ==================== VALIDATE PRIMARY LANGUAGE (if provided) ====================
+    if (
+      professionalIdentity?.primaryLanguage &&
+      parseLanguages.length > 0 &&
+      !parseLanguages.includes(professionalIdentity.primaryLanguage)
+    ) {
+      throw createHttpError(
+        400,
+        "Primary language must be one of the selected languages"
+      );
+    }
+
+    // ==================== CREATE CELEBRITY ====================
+    const newCelebraty = await Celebraty.create({
+      // A) Identity & Profile
+      identityProfile: {
+        name: identityProfile.name,
+        slug: finalSlug,
+        slugHistory: [], // Will be populated on slug changes
+        image: null, // Will be updated after file processing
+        gallery: parseGallery,
+        shortinfo: identityProfile.shortinfo || "",
+        biography: identityProfile.biography || "",
+        status: identityProfile.status || "Draft",
+      },
+
+      // B) Personal Details
+      personalDetails: personalDetails
+        ? {
+            dob: personalDetails.dob || null,
+            birthplace: personalDetails.birthplace || "",
+            gender: personalDetails.gender || null,
+            nationality: personalDetails.nationality || "",
+            religion: personalDetails.religion || "",
+          }
+        : {},
+
+      // C) Family & Relationships
+      familyRelationships: familyRelationships
+        ? {
+            father: familyRelationships.father || {},
+            mother: familyRelationships.mother || {},
+            spouse: familyRelationships.spouse || {},
+            children: parseChildren,
+            siblings: parseSiblings,
+          }
+        : {},
+
+      // D) Professional Identity
+      professionalIdentity: {
+        sections: parseSections,
+        professions: parseProfessions,
+        primaryProfession: professionalIdentity.primaryProfession,
+        languages: parseLanguages,
+        primaryLanguage: professionalIdentity.primaryLanguage || null,
+        careerStartYear: professionalIdentity.careerStartYear || null,
+        careerEndYear: professionalIdentity.careerEndYear || null,
+        isCareerOngoing:
+          professionalIdentity.isCareerOngoing !== undefined
+            ? professionalIdentity.isCareerOngoing
+            : true,
+      },
+
+      // E) Location & Public Presence
+      locationPresence: locationPresence
+        ? {
+            currentCity: locationPresence.currentCity || "",
+            knownForRegion: parseKnownForRegion,
+          }
+        : {},
+
+      // F) Physical & Public Attributes
+      publicAttributes: publicAttributes
+        ? {
+            height: publicAttributes.height || "",
+            signatureStyle: publicAttributes.signatureStyle || "",
+          }
+        : {},
+
+      // G) Social Links
+      socialLinks: parseSocialLinks,
+
+      // H) SEO Metadata
+      seoMetadata: seoMetadata
+        ? {
+            tags: parseTags,
+            seoMetaTitle: seoMetadata.seoMetaTitle || "",
+            seoMetaDescription: seoMetadata.seoMetaDescription || "",
+            seoKeywords: parseSeoKeywords,
+          }
+        : {},
+
+      // I) Admin Controls
+      adminControls: adminControls
+        ? {
+            isFeatured: adminControls.isFeatured || false,
+            verificationStatus: adminControls.verificationStatus || "Not Claimed",
+            internalNotes: adminControls.internalNotes || "",
+          }
+        : {},
+
+      // J) Audit Trail
+      auditTrail: {
+        createdBy,
+        updatedBy: null,
+        approvedBy: null,
+        publishedAt: identityProfile.status === "Published" ? new Date() : null,
+      },
+
+      // K) Root level status (Active/Inactive)
+      status: 1,
+
+      // L) Analytics & Engagement
+      analyticsEngagement: {
+        viewCount: 0,
+        followerCount: 0,
+        popularityScore: 0,
+        trendingScore: 0,
+        searchBoostScore: 0,
+      },
+
+      // M) Profile Quality
+      profileQuality: {
+        profileCompletionPercentage: 0, // Calculate later if needed
+      },
+    });
+
+    const celebId = newCelebraty._id.toString();
+    console.log("✅ Celebrity created:", celebId);
+
+    // ==================== FILES PROCESS ====================
+    // ✅ Centralized helper — move + rename + paths return karta hai
+    const { imagePath, galleryPaths } = processCelebrityFiles(req.files, celebId);
+
+    console.log(imagePath , galleryPaths)
+
+    // ✅ DB mein paths update karo
+    if (imagePath || galleryPaths.length > 0) {
+      const imageUpdate = {};
+      if (imagePath) imageUpdate["identityProfile.image"] = imagePath;
+      if (galleryPaths.length > 0) {
+        imageUpdate["identityProfile.gallery"] = [
+          ...parseGallery,
+          ...galleryPaths,
+        ];
+      }
+
+      await Celebraty.findByIdAndUpdate(celebId, { $set: imageUpdate });
+      console.log("✅ Image paths updated in DB");
+    }
+
+    // ==================== SECTION SYNC ====================
+    if (parseProfessions.length === 0) {
+      console.log("⚠️ No professions — skipping section sync");
+
+      const finalCelebrity = await Celebraty.findById(celebId)
+        .populate("professionalIdentity.professions", "name")
+        .populate("professionalIdentity.languages", "name")
+        .populate("professionalIdentity.sections", "name")
+        .populate("socialLinks.platform", "name");
+
+      return res.status(201).json({
+        success: true,
+        message: "Celebrity created successfully",
+        data: finalCelebrity,
+      });
+    }
+
+    const allNewSectionIds = [];
+
+    for (const profId of parseProfessions) {
+      const profession = await Professionalmaster.findById(profId);
+      if (!profession) {
+        console.log("❌ Profession not found:", profId);
+        continue;
+      }
+
+      const sectionTemplateIds = profession.sectiontemplate || [];
+      if (sectionTemplateIds.length === 0) continue;
+
+      for (const templateId of sectionTemplateIds) {
+        const template = await SectionTemplate.findById(templateId).populate(
+          "sections"
+        );
+        if (!template || !template.sections || template.sections.length === 0)
+          continue;
+
+        for (const section of template.sections) {
+          const exists = await CelebratySection.findOne({
+            celebratyId: celebId,
+            professions: profId.toString(),
+            templateId: templateId.toString(),
+            sectionmaster: section._id.toString(),
+          });
+
+          if (exists) continue;
+
+          await CelebratySection.create({
+            celebratyId: celebId,
+            professions: profId.toString(),
+            templateId: templateId.toString(),
+            sectionmaster: section._id.toString(),
+            sectiontemplate: section.name || template.title,
+            status: 1,
+            flag: 1,
+          });
+
+          allNewSectionIds.push(section._id);
+        }
+      }
+    }
+
+    if (allNewSectionIds.length > 0) {
+      await Celebraty.findByIdAndUpdate(celebId, {
+        $addToSet: { "professionalIdentity.sections": { $each: allNewSectionIds } },
+      });
+      console.log(`✅ Pushed ${allNewSectionIds.length} sections to celebrity`);
+    }
+
+    // ==================== RESPONSE ====================
+    const finalCelebrity = await Celebraty.findById(celebId)
+      .populate("professionalIdentity.professions", "name")
+      .populate("professionalIdentity.languages", "name")
+      .populate("professionalIdentity.sections", "name")
+      .populate("professionalIdentity.primaryProfession", "name")
+      .populate("professionalIdentity.primaryLanguage", "name")
+      .populate("socialLinks.platform", "name");
+
+    return res.status(201).json({
+      success: true,
+      message: "Celebrity created successfully",
+      data: finalCelebrity,
+    });
+  } catch (error) {
+    console.error("❌ Error in addcelebraty:", error);
+    next(error);
+  }
+};
+
+
+
+
+/**
+ * Get all celebrities with pagination and filters - MINIMAL DATA FOR LISTING
+ */
+/**
+ * Get all celebrities with pagination and filters - MINIMAL DATA FOR LISTING
+ */
+const getdata = async (req, res, next) => {
+  try {
+    const { page, limit, search, status } = req.query;
+
+    let query = {};
+
+    // Search filter
+    if (search) {
+      query["identityProfile.name"] = { $regex: search, $options: "i" };
+    }
+
+    // Root level status filter (Active/Inactive)
+    if (status) {
+      query["status"] = status;
+    }
+
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    // ✅ Fetch minimal fields including professions
+    const celebrities = await Celebraty.find(query)
+      .select({
+        "identityProfile.name": 1,
+        "status": 1,
+        "professionalIdentity.sections": 1,
+        "professionalIdentity.professions": 1, // ✅ ADD professions
+        _id: 1,
+        createdAt: 1,
+      })
+      .populate("professionalIdentity.sections", "name")
+      .populate("professionalIdentity.professions", "name _id") // ✅ POPULATE professions
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    const total = await Celebraty.countDocuments(query);
+
+    // ✅ Format response with professions
+    const formattedData = celebrities.map(celeb => ({
+      _id: celeb._id,
+      name: celeb.identityProfile?.name || "N/A",
+      status: celeb.status || "Active",
+      sections: celeb.professionalIdentity?.sections || [],
+      professions: celeb.professionalIdentity?.professions || [], // ✅ ADD professions
+      createdAt: celeb.createdAt,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message: "Celebrities retrieved successfully",
+      data: formattedData,
+      meta: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error("Get Celebrities Error:", error);
+    next(error);
+  }
+};
+
+/**
+ * Get celebrity by ID
+ */
+const getcelebratyByid = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const celebrity = await Celebraty.findById(id)
+      .populate("professionalIdentity.professions", "name")
+      .populate("professionalIdentity.primaryProfession", "name")
+      .populate("professionalIdentity.languages", "name")
+      .populate("professionalIdentity.primaryLanguage", "name")
+      .populate("professionalIdentity.sections", "name")
+      .populate("socialLinks.platform", "name")
+      .populate("auditTrail.createdBy", "name email");
+
+    if (!celebrity) {
+      throw createHttpError(404, "Celebrity not found");
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Celebrity retrieved successfully",
+      data: celebrity,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updatecelebraty = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    console.log("Updating celebrity ID:", id);
+    
+    const {
+      identityProfile,
+      personalDetails,
+      familyRelationships,
+      professionalIdentity,
+      locationPresence,
+      publicAttributes,
+      socialLinks,
+      seoMetadata,
+      adminControls,
+      status,
+      oldGallery,
+      removeOldImage,
+    } = req.body;
+
+    // ==================== FIND EXISTING CELEBRITY ====================
+    const existingCelebraty = await Celebraty.findById(id);
+    if (!existingCelebraty) {
+      throw createHttpError(404, "Celebrity not found");
+    }
+
+    // ==================== DUPLICATE CHECKS ====================
+    if (identityProfile?.name) {
+      const duplicateName = await Celebraty.findOne({
+        "identityProfile.name": { $regex: new RegExp(`^${identityProfile.name}$`, "i") },
+        _id: { $ne: id },
+      });
+      if (duplicateName) {
+        throw createHttpError(400, "Celebrity with this name already exists");
+      }
+    }
+
+    if (identityProfile?.slug) {
+      const duplicateSlug = await Celebraty.findOne({
+        "identityProfile.slug": { $regex: new RegExp(`^${identityProfile.slug}$`, "i") },
+        _id: { $ne: id },
+      });
+      if (duplicateSlug) {
+        throw createHttpError(409, "Slug already exists");
+      }
+
+      const existingInHistory = await Celebraty.findOne({
+        "identityProfile.slugHistory.slug": identityProfile.slug,
+        _id: { $ne: id },
+      });
+      if (existingInHistory) {
+        throw createHttpError(409, "Slug conflicts with historical slug");
+      }
+    }
+
+    // ==================== HANDLE FILE UPLOADS ====================
+    let profileImage = existingCelebraty.identityProfile?.image;
+    let mergedGallery = [];
+
+    // ✅ STEP 1: Parse old gallery properly
+    console.log("📦 oldGallery received:", oldGallery);
+    console.log("📦 oldGallery type:", typeof oldGallery);
+    
+    if (oldGallery) {
+      // ✅ Handle both string and array (after parseNestedFormData)
+      if (typeof oldGallery === 'string') {
+        try {
+          mergedGallery = JSON.parse(oldGallery);
+          console.log("✅ Parsed oldGallery from string:", mergedGallery);
+        } catch (error) {
+          console.error("❌ Failed to parse oldGallery:", error);
+          mergedGallery = [];
+        }
+      } else if (Array.isArray(oldGallery)) {
+        mergedGallery = oldGallery;
+        console.log("✅ oldGallery already array:", mergedGallery);
+      } else {
+        mergedGallery = [];
+      }
+    }
+
+    // ✅ STEP 2: Handle profile image deletion/update
+    if (removeOldImage === true || removeOldImage === "true") {
+      if (existingCelebraty.identityProfile?.image) {
+        const oldImagePath = path.join(
+          __dirname,
+          "../public",
+          existingCelebraty.identityProfile.image.replace(/^\//, '')
+        );
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+          console.log("🗑️ Deleted old profile image");
+        }
+      }
+      profileImage = "";
+    }
+
+    // ✅ STEP 3: Process new uploaded files
+    if (req.files && (req.files.image || req.files.gallery)) {
+      console.log("📤 Processing new files...");
+      
+      const { imagePath, galleryPaths } = processCelebrityFiles(req.files, id);
+      
+      console.log("📸 New profile image:", imagePath);
+      console.log("🖼️ New gallery images:", galleryPaths);
+
+      // Delete old profile image if new one is uploaded
+      if (imagePath && existingCelebraty.identityProfile?.image) {
+        const oldImagePath = path.join(
+          __dirname,
+          "../public",
+          existingCelebraty.identityProfile.image.replace(/^\//, '')
+        );
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+          console.log("🗑️ Deleted old profile image (replaced with new)");
+        }
+        profileImage = imagePath;
+      }
+
+      // ✅ STEP 4: Append new gallery images to existing ones
+      if (galleryPaths.length > 0) {
+        mergedGallery = [...mergedGallery, ...galleryPaths];
+        console.log("✅ Merged gallery (old + new):", mergedGallery);
+      }
+    }
+
+    console.log("📊 Final gallery to save:", mergedGallery);
+
+    // ==================== PARSE JSON FIELDS ====================
+    const parsedProfessions = typeof professionalIdentity?.professions === 'string' 
+      ? JSON.parse(professionalIdentity.professions) 
+      : professionalIdentity?.professions;
+    
+    const parsedLanguages = typeof professionalIdentity?.languages === 'string' 
+      ? JSON.parse(professionalIdentity.languages) 
+      : professionalIdentity?.languages;
+    
+    const parsedSections = typeof professionalIdentity?.sections === 'string' 
+      ? JSON.parse(professionalIdentity.sections) 
+      : professionalIdentity?.sections;
+    
+    const parsedSocialLinks = typeof socialLinks === 'string' 
+      ? JSON.parse(socialLinks) 
+      : socialLinks;
+
+    const parsedChildren = typeof familyRelationships?.children === 'string'
+      ? JSON.parse(familyRelationships.children)
+      : familyRelationships?.children;
+
+    const parsedSiblings = typeof familyRelationships?.siblings === 'string'
+      ? JSON.parse(familyRelationships.siblings)
+      : familyRelationships?.siblings;
+
+    // ==================== BUILD UPDATE OBJECT ====================
+    const updateFields = {};
+    
+    // A) Identity Profile
+    if (identityProfile) {
+      if (identityProfile.name !== undefined) updateFields["identityProfile.name"] = identityProfile.name;
+      
+      // Slug history handling
+      if (identityProfile.slug !== undefined && identityProfile.slug !== existingCelebraty.identityProfile.slug) {
+        const slugHistoryEntry = {
+          slug: existingCelebraty.identityProfile.slug,
+          changedAt: new Date(),
+          changedBy: req.user?.userId,
+        };
+        
+        updateFields["identityProfile.slug"] = identityProfile.slug;
+        updateFields["$push"] = {
+          "identityProfile.slugHistory": slugHistoryEntry
+        };
+      }
+      
+      if (identityProfile.shortinfo !== undefined) updateFields["identityProfile.shortinfo"] = identityProfile.shortinfo;
+      if (identityProfile.biography !== undefined) updateFields["identityProfile.biography"] = identityProfile.biography;
+      if (identityProfile.status !== undefined) updateFields["identityProfile.status"] = identityProfile.status;
+      
+      // ✅ Always update image and gallery
+      updateFields["identityProfile.image"] = profileImage;
+      updateFields["identityProfile.gallery"] = mergedGallery;
+    }
+
+    // B) Personal Details
+    if (personalDetails) {
+      if (personalDetails.dob !== undefined) updateFields["personalDetails.dob"] = personalDetails.dob;
+      if (personalDetails.birthplace !== undefined) updateFields["personalDetails.birthplace"] = personalDetails.birthplace;
+      if (personalDetails.gender !== undefined) updateFields["personalDetails.gender"] = personalDetails.gender;
+      if (personalDetails.nationality !== undefined) updateFields["personalDetails.nationality"] = personalDetails.nationality;
+      if (personalDetails.religion !== undefined) updateFields["personalDetails.religion"] = personalDetails.religion;
+    }
+
+    // C) Family Relationships
+    if (familyRelationships) {
+      if (familyRelationships.father) updateFields["familyRelationships.father"] = familyRelationships.father;
+      if (familyRelationships.mother) updateFields["familyRelationships.mother"] = familyRelationships.mother;
+      if (familyRelationships.spouse) updateFields["familyRelationships.spouse"] = familyRelationships.spouse;
+      if (parsedChildren) updateFields["familyRelationships.children"] = parsedChildren;
+      if (parsedSiblings) updateFields["familyRelationships.siblings"] = parsedSiblings;
+    }
+
+    // D) Professional Identity
+    if (professionalIdentity) {
+      if (parsedProfessions !== undefined) updateFields["professionalIdentity.professions"] = parsedProfessions;
+      if (professionalIdentity.primaryProfession !== undefined) updateFields["professionalIdentity.primaryProfession"] = professionalIdentity.primaryProfession;
+      if (parsedLanguages !== undefined) updateFields["professionalIdentity.languages"] = parsedLanguages;
+      if (professionalIdentity.primaryLanguage !== undefined) updateFields["professionalIdentity.primaryLanguage"] = professionalIdentity.primaryLanguage;
+      if (parsedSections !== undefined) updateFields["professionalIdentity.sections"] = parsedSections;
+      if (professionalIdentity.careerStartYear !== undefined) updateFields["professionalIdentity.careerStartYear"] = professionalIdentity.careerStartYear;
+      if (professionalIdentity.careerEndYear !== undefined) updateFields["professionalIdentity.careerEndYear"] = professionalIdentity.careerEndYear;
+      if (professionalIdentity.isCareerOngoing !== undefined) updateFields["professionalIdentity.isCareerOngoing"] = professionalIdentity.isCareerOngoing;
+    }
+
+    // E) Location Presence
+    if (locationPresence) {
+      if (locationPresence.currentCity !== undefined) updateFields["locationPresence.currentCity"] = locationPresence.currentCity;
+      if (locationPresence.knownForRegion !== undefined) {
+        const parsedRegion = typeof locationPresence.knownForRegion === 'string' 
+          ? JSON.parse(locationPresence.knownForRegion) 
+          : locationPresence.knownForRegion;
+        updateFields["locationPresence.knownForRegion"] = parsedRegion;
+      }
+    }
+
+    // F) Public Attributes
+    if (publicAttributes) {
+      if (publicAttributes.height !== undefined) updateFields["publicAttributes.height"] = publicAttributes.height;
+      if (publicAttributes.signatureStyle !== undefined) updateFields["publicAttributes.signatureStyle"] = publicAttributes.signatureStyle;
+    }
+
+    // G) Social Links
+    if (parsedSocialLinks !== undefined) updateFields["socialLinks"] = parsedSocialLinks;
+
+    // H) SEO Metadata
+    if (seoMetadata) {
+      if (seoMetadata.tags !== undefined) {
+        const parsedTags = typeof seoMetadata.tags === 'string' 
+          ? JSON.parse(seoMetadata.tags) 
+          : seoMetadata.tags;
+        updateFields["seoMetadata.tags"] = parsedTags;
+      }
+      if (seoMetadata.seoMetaTitle !== undefined) updateFields["seoMetadata.seoMetaTitle"] = seoMetadata.seoMetaTitle;
+      if (seoMetadata.seoMetaDescription !== undefined) updateFields["seoMetadata.seoMetaDescription"] = seoMetadata.seoMetaDescription;
+      if (seoMetadata.seoKeywords !== undefined) {
+        const parsedKeywords = typeof seoMetadata.seoKeywords === 'string' 
+          ? JSON.parse(seoMetadata.seoKeywords) 
+          : seoMetadata.seoKeywords;
+        updateFields["seoMetadata.seoKeywords"] = parsedKeywords;
+      }
+    }
+
+    // I) Admin Controls
+    if (adminControls) {
+      if (adminControls.isFeatured !== undefined) updateFields["adminControls.isFeatured"] = adminControls.isFeatured;
+      if (adminControls.verificationStatus !== undefined) updateFields["adminControls.verificationStatus"] = adminControls.verificationStatus;
+      if (adminControls.internalNotes !== undefined) updateFields["adminControls.internalNotes"] = adminControls.internalNotes;
+    }
+
+    // J) Root level status
+    if (status !== undefined) updateFields["status"] = status;
+
+    // K) Update audit trail
+    updateFields["auditTrail.updatedBy"] = req.user?.userId;
+
+    // ==================== UPDATE CELEBRITY ====================
+    const updateOperation = { $set: updateFields };
+    
+    if (updateFields["$push"]) {
+      updateOperation.$push = updateFields["$push"];
+      delete updateFields["$push"];
+    }
+
+    const updatedCelebraty = await Celebraty.findByIdAndUpdate(
+      id,
+      updateOperation,
+      { new: true, runValidators: true }
+    );
+
+    console.log("✅ Celebrity updated successfully");
+
+    // ==================== SYNC SECTIONS ====================
+    if (parsedProfessions && parsedProfessions.length > 0) {
+      for (const professionId of parsedProfessions) {
+        try {
+          const profession = await Professionalmaster.findById(professionId);
+
+          if (!profession) {
+            console.log(`⚠️ Profession not found: ${professionId}`);
+            continue;
+          }
+
+          if (profession.sectiontemplate && profession.sectiontemplate.length > 0) {
+            await syncCelebritySections(professionId, profession.sectiontemplate, id);
+          }
+        } catch (syncError) {
+          console.error(`❌ Error syncing profession ${professionId}:`, syncError);
+        }
+      }
+    }
+
+    // ==================== RESPONSE ====================
+    const finalCelebrity = await Celebraty.findById(id)
+      .populate("professionalIdentity.professions", "name")
+      .populate("professionalIdentity.languages", "name")
+      .populate("professionalIdentity.sections", "name")
+      .populate("professionalIdentity.primaryProfession", "name")
+      .populate("professionalIdentity.primaryLanguage", "name")
+      .populate("socialLinks.platform", "name");
+
+    return res.status(200).json({
+      success: true,
+      message: "Celebrity updated successfully",
+      data: finalCelebrity,
+    });
+  } catch (error) {
+    console.error("❌ Error in updatecelebraty:", error);
+    next(error);
+  }
+};
+
+/**
+ * Update celebrity status (Active/Inactive at root level)
+ */
+const updateStatus = async (req, res, next) => {
+  try {
+    const { id, status } = req.body;
+
+
+    console.log(status)
+
+    const existingCelebraty = await Celebraty.findById(id);
+    if (!existingCelebraty) {
+      throw createHttpError(404, "Celebrity not found");
+    }
+
+    // Update root level status
+    const updatedCelebraty = await Celebraty.findByIdAndUpdate(
+      id,
+      { $set: { status } },
+      { new: true, runValidators: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Status updated successfully",
+      data: {
+        _id: updatedCelebraty._id,
+        name: updatedCelebraty.identityProfile?.name,
+        status: updatedCelebraty.status,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Delete celebrity
+ */
+const deletecelebraty = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const celebrity = await Celebraty.findById(id);
+    if (!celebrity) {
+      throw createHttpError(404, "Celebrity not found");
+    }
+
+    // Delete related data
+    const deletedMovies = await Moviev.deleteMany({ celebrityId: id });
+    const deletedSeries = await Series.deleteMany({ celebrityId: id });
+    const deletedElection = await Election.deleteMany({ celebrityId: id });
+    const deletedPositions = await Positions.deleteMany({ celebrityId: id });
+    const deletedTimeline = await Timeline.deleteMany({ celebrityId: id });
+    const deletedTrivia = await Triviaentries.deleteMany({ celebrityId: id });
+    const deletedSections = await CelebratySection.deleteMany({ celebratyId: id });
+
+    // Delete celebrity images
+    if (celebrity.identityProfile?.image) {
+      const imagePath = path.join(__dirname, "../public/celebrity", celebrity.identityProfile.image);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    if (celebrity.identityProfile?.gallery && celebrity.identityProfile.gallery.length > 0) {
+      celebrity.identityProfile.gallery.forEach(img => {
+        const imgPath = path.join(__dirname, "../public/celebrity", img);
+        if (fs.existsSync(imgPath)) {
+          fs.unlinkSync(imgPath);
+        }
+      });
+    }
+
+    // Delete the celebrity
+    await Celebraty.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Celebrity and related data deleted successfully",
+      data: {
+        deletedMoviesCount: deletedMovies.deletedCount,
+        deletedSeriesCount: deletedSeries.deletedCount,
+        deletedElectionCount: deletedElection.deletedCount,
+        deletedPositionsCount: deletedPositions.deletedCount,
+        deletedTimelineCount: deletedTimeline.deletedCount,
+        deletedTriviaCount: deletedTrivia.deletedCount,
+        deletedSectionsCount: deletedSections.deletedCount,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get celebrity sections by celebrity ID
+ */
+const getCelebratySectionsByCeleb = async (req, res, next) => {
+  try {
+    const { celebratyId } = req.params;
+
+    const sections = await CelebratySection.find({ celebratyId })
+      .populate("sectionmaster", "name")
+      .lean();
+
+    const formattedSections = sections.map(section => ({
+      ...section,
+      sectionMasterName: section.sectionmaster?.name || null,
+      sectionName: section.sectionName || null,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message: "Celebrity sections retrieved successfully",
+      data: formattedSections,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  addcelebraty,
+  professionsOptions,
+  languageOptions,
+  updateStatus,
+  updatecelebraty,
+  getdata,
+  deletecelebraty,
+  getcelebratyByid,
+  sociallist,
+  getProfessions,
+  getSectionTemplates,
+  getSectionMasters,
+  getCelebratySectionsByCeleb,
+};

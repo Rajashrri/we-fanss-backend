@@ -1,0 +1,7 @@
+
+
+const BASE_URL = "http://localhost:8000/api";
+
+
+const AUTHORIZATION_TOKEN = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTczNzhiZDg4NjEwYmM0ZWFhNDM2YjUiLCJlbWFpbCI6ImFiaGlzaGVrcmVhY3QuZGV2QGdtYWlsLmNvbSIsIm5hbWUiOiJhYmhpc2hlayIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc2OTQxODMxNiwiZXhwIjoxNzY5NDYxNTE2fQ.fafjSUMB3xdA1HB8uokrbPuNyE2UtJotoqOGxbwV_Jk`;
+
