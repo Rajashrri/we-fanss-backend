@@ -37,7 +37,6 @@ router.post(
  */
 router.get(
   "/getdatalanguage",
-  checkPrivilege(RESOURCES.LANGUAGE, OPERATIONS.VIEW),
   validate(getAllLanguagesSchema),
   languageController.getDataLanguage
 );
