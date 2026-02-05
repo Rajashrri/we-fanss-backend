@@ -1,10 +1,5 @@
-// celebraty-validation.js - FIXED VERSION
-
 const { z } = require("zod");
 
-// ========================================
-// 🔧 HELPER FUNCTIONS
-// ========================================
 const stringToArray = (value) => {
   if (typeof value === "string") {
     try {
@@ -16,7 +11,6 @@ const stringToArray = (value) => {
   return value;
 };
 
-// ✅ STRING TO BOOLEAN CONVERTER
 const stringToBoolean = (value) => {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") {
@@ -25,7 +19,6 @@ const stringToBoolean = (value) => {
   return false;
 };
 
-// ✅ STRING TO NUMBER CONVERTER
 const stringToNumber = (value) => {
   if (typeof value === "number") return value;
   if (typeof value === "string") {
@@ -35,9 +28,6 @@ const stringToNumber = (value) => {
   return undefined;
 };
 
-// ========================================
-// 🌐 SOCIAL LINK SCHEMA
-// ========================================
 const socialLinkSchema = z.object({
   platform: z
     .string({
@@ -60,9 +50,6 @@ const socialLinkSchema = z.object({
     .optional(),
 });
 
-// ========================================
-// 👨‍👩‍👧 FAMILY MEMBER SCHEMA
-// ========================================
 const familyMemberSchema = z.object({
   name: z
     .string({
@@ -70,9 +57,15 @@ const familyMemberSchema = z.object({
     })
     .trim()
     .optional(),
+  profession: z
+    .string({
+      invalid_type_error: "Profession must be a string",
+    })
+    .trim()
+    .optional(),
   showOnPublicProfile: z
     .union([z.boolean(), z.string()])
-    .transform(stringToBoolean) // ✅ STRING → BOOLEAN
+    .transform(stringToBoolean)
     .optional()
     .default(false),
 });
@@ -92,17 +85,13 @@ const familyMemberWithRelationSchema = z.object({
     .optional(),
   showOnPublicProfile: z
     .union([z.boolean(), z.string()])
-    .transform(stringToBoolean) // ✅ STRING → BOOLEAN
+    .transform(stringToBoolean)
     .optional()
     .default(false),
 });
 
-// ========================================
-// ✅ CREATE CELEBRITY SCHEMA
-// ========================================
 const createCelebratySchema = z.object({
   body: z.object({
-    // A) Identity & Profile (Core)
     identityProfile: z.object({
       name: z
         .string({
@@ -118,7 +107,6 @@ const createCelebratySchema = z.object({
         })
         .trim()
         .optional(),
-      
       gallery: z
         .union([
           z.string().transform(stringToArray),
@@ -127,18 +115,19 @@ const createCelebratySchema = z.object({
         .optional(),
       shortinfo: z
         .string({
+          required_error: "Short info is required",
           invalid_type_error: "Short info must be a string",
         })
         .trim()
         .min(10, "Short info must be at least 10 characters")
-        .max(500, "Short info must be less than 500 characters")
-        .optional(),
+        .max(500, "Short info must be less than 500 characters"),
       biography: z
         .string({
+          required_error: "Biography is required",
           invalid_type_error: "Biography must be a string",
         })
         .trim()
-        .optional(),
+        .min(1, "Biography is required"),
       status: z
         .enum(["Draft", "In Review", "Published", "Archived"], {
           invalid_type_error:
@@ -148,51 +137,82 @@ const createCelebratySchema = z.object({
         .default("Draft"),
     }),
 
-    // B) Personal Details
-    personalDetails: z
+    personalDetails: z.object({
+      dob: z
+        .string({
+          required_error: "Date of birth is required",
+          invalid_type_error: "Date of birth must be a string",
+        })
+        .regex(
+          /^\d{4}-\d{2}-\d{2}$/,
+          "Date of birth must be in YYYY-MM-DD format"
+        ),
+      birthplace: z
+        .string({
+          invalid_type_error: "Birthplace must be a string",
+        })
+        .trim()
+        .optional(),
+      gender: z.enum(["Male", "Female", "Other", "Prefer not to say"], {
+        required_error: "Gender is required",
+        invalid_type_error:
+          "Gender must be Male, Female, Other, or Prefer not to say",
+      }),
+      nationality: z
+        .string({
+          invalid_type_error: "Nationality must be a string",
+        })
+        .trim()
+        .optional(),
+      religion: z
+        .string({
+          invalid_type_error: "Religion must be a string",
+        })
+        .trim()
+        .optional(),
+    }),
+
+    lifeStatus: z
       .object({
-        dob: z
+        isAlive: z
+          .union([z.boolean(), z.string()])
+          .transform(stringToBoolean)
+          .optional()
+          .default(true),
+        dateOfDeath: z
           .string({
-            invalid_type_error: "Date of birth must be a string",
+            invalid_type_error: "Date of death must be a string",
           })
           .regex(
             /^\d{4}-\d{2}-\d{2}$/,
-            "Date of birth must be in YYYY-MM-DD format"
+            "Date of death must be in YYYY-MM-DD format"
           )
           .optional(),
-        birthplace: z
+        placeOfDeath: z
           .string({
-            invalid_type_error: "Birthplace must be a string",
+            invalid_type_error: "Place of death must be a string",
           })
           .trim()
           .optional(),
-        gender: z
-          .enum(["Male", "Female", "Other", "Prefer not to say"], {
-            invalid_type_error:
-              "Gender must be Male, Female, Other, or Prefer not to say",
-          })
-          .optional(),
-        nationality: z
+        causeOfDeath: z
           .string({
-            invalid_type_error: "Nationality must be a string",
-          })
-          .trim()
-          .optional(),
-        religion: z
-          .string({
-            invalid_type_error: "Religion must be a string",
+            invalid_type_error: "Cause of death must be a string",
           })
           .trim()
           .optional(),
       })
       .optional(),
 
-    // C) Family & Relationships
     familyRelationships: z
       .object({
         father: familyMemberSchema.optional(),
         mother: familyMemberSchema.optional(),
-        spouse: familyMemberSchema.optional(),
+        spouses: z
+          .union([
+            z.string().transform(stringToArray),
+            z.array(familyMemberSchema),
+          ])
+          .optional(),
         children: z
           .union([
             z.string().transform(stringToArray),
@@ -208,94 +228,90 @@ const createCelebratySchema = z.object({
       })
       .optional(),
 
-    // D) Professional Identity
-    professionalIdentity: z
-      .object({
-        sections: z
-          .union([
-            z.string().transform(stringToArray),
-            z.array(
-              z
-                .string()
-                .regex(/^[0-9a-fA-F]{24}$/, "Invalid section ID format")
-            ),
-          ])
-          .optional(),
-        professions: z
-          .union([
-            z.string().transform(stringToArray),
-            z.array(
-              z
-                .string()
-                .regex(/^[0-9a-fA-F]{24}$/, "Invalid profession ID format")
-            ),
-          ])
-          .refine((arr) => arr && arr.length > 0, {
-            message: "At least one profession is required",
-          }),
-        primaryProfession: z
-          .string({
-            required_error: "Primary profession is required",
-            invalid_type_error: "Primary profession must be a valid ID",
-          })
-          .regex(/^[0-9a-fA-F]{24}$/, "Invalid primary profession ID format"),
-        languages: z
-          .union([
-            z.string().transform(stringToArray),
-            z.array(
-              z
-                .string()
-                .regex(/^[0-9a-fA-F]{24}$/, "Invalid language ID format")
-            ),
-          ])
-          .optional(),
-        primaryLanguage: z
-          .string({
-            invalid_type_error: "Primary language must be a valid ID",
-          })
-          .regex(/^[0-9a-fA-F]{24}$/, "Invalid primary language ID format")
-          .optional(),
-        careerStartYear: z
-          .union([z.number(), z.string()]) // ✅ STRING YA NUMBER DONO ACCEPT
-          .transform(stringToNumber) // ✅ STRING → NUMBER
-          .pipe(
+    professionalIdentity: z.object({
+      sections: z
+        .union([
+          z.string().transform(stringToArray),
+          z.array(
             z
-              .number({
-                invalid_type_error: "Career start year must be a number",
-              })
-              .int()
-              .min(1900, "Career start year must be after 1900")
-              .max(
-                new Date().getFullYear(),
-                "Career start year cannot be in the future"
-              )
-          )
-          .optional(),
-        careerEndYear: z
-          .union([z.number(), z.string()]) // ✅ STRING YA NUMBER DONO ACCEPT
-          .transform(stringToNumber) // ✅ STRING → NUMBER
-          .pipe(
+              .string()
+              .regex(/^[0-9a-fA-F]{24}$/, "Invalid section ID format")
+          ),
+        ])
+        .optional(),
+      professions: z
+        .union([
+          z.string().transform(stringToArray),
+          z.array(
             z
-              .number({
-                invalid_type_error: "Career end year must be a number",
-              })
-              .int()
-              .min(1900, "Career end year must be after 1900")
-              .max(
-                new Date().getFullYear() + 10,
-                "Career end year is too far in the future"
-              )
-          )
-          .optional(),
-        isCareerOngoing: z
-          .union([z.boolean(), z.string()]) // ✅ STRING YA BOOLEAN DONO
-          .transform(stringToBoolean) // ✅ STRING → BOOLEAN
-          .optional()
-          .default(true),
-      })
-      .optional(),
+              .string()
+              .regex(/^[0-9a-fA-F]{24}$/, "Invalid profession ID format")
+          ),
+        ])
+        .refine((arr) => arr && arr.length > 0, {
+          message: "At least one profession is required",
+        }),
+      primaryProfession: z
+        .string({
+          invalid_type_error: "Primary profession must be a valid ID",
+        })
+        .regex(/^[0-9a-fA-F]{24}$/, "Invalid primary profession ID format")
+        .optional(),
+      languages: z
+        .union([
+          z.string().transform(stringToArray),
+          z.array(
+            z
+              .string()
+              .regex(/^[0-9a-fA-F]{24}$/, "Invalid language ID format")
+          ),
+        ])
+        .optional(),
+      primaryLanguage: z
+        .string({
+          invalid_type_error: "Primary language must be a valid ID",
+        })
+        .regex(/^[0-9a-fA-F]{24}$/, "Invalid primary language ID format")
+        .optional(),
+      careerStartYear: z
+        .union([z.number(), z.string()])
+        .transform(stringToNumber)
+        .pipe(
+          z
+            .number({
+              invalid_type_error: "Career start year must be a number",
+            })
+            .int()
+            .min(1900, "Career start year must be after 1900")
+            .max(
+              new Date().getFullYear(),
+              "Career start year cannot be in the future"
+            )
+        )
+        .optional(),
+      careerEndYear: z
+        .union([z.number(), z.string()])
+        .transform(stringToNumber)
+        .pipe(
+          z
+            .number({
+              invalid_type_error: "Career end year must be a number",
+            })
+            .int()
+            .min(1900, "Career end year must be after 1900")
+            .max(
+              new Date().getFullYear() + 10,
+              "Career end year is too far in the future"
+            )
+        )
+        .optional(),
+      isCareerOngoing: z
+        .union([z.boolean(), z.string()])
+        .transform(stringToBoolean)
+        .optional()
+        .default(true),
+    }),
 
-    // E) Location & Public Presence
     locationPresence: z
       .object({
         currentCity: z
@@ -313,7 +329,6 @@ const createCelebratySchema = z.object({
       })
       .optional(),
 
-    // F) Physical & Public Attributes
     publicAttributes: z
       .object({
         height: z
@@ -332,7 +347,6 @@ const createCelebratySchema = z.object({
       })
       .optional(),
 
-    // G) Social Links
     socialLinks: z
       .union([
         z.string().transform(stringToArray),
@@ -340,7 +354,6 @@ const createCelebratySchema = z.object({
       ])
       .optional(),
 
-    // H) SEO Metadata
     seoMetadata: z
       .object({
         tags: z
@@ -372,12 +385,11 @@ const createCelebratySchema = z.object({
       })
       .optional(),
 
-    // I) Admin Controls (Admin Only)
     adminControls: z
       .object({
         isFeatured: z
-          .union([z.boolean(), z.string()]) // ✅ STRING YA BOOLEAN
-          .transform(stringToBoolean) // ✅ STRING → BOOLEAN
+          .union([z.boolean(), z.string()])
+          .transform(stringToBoolean)
           .optional(),
         verificationStatus: z
           .enum(["Not Claimed", "Claim Requested", "Verified"], {
@@ -396,7 +408,6 @@ const createCelebratySchema = z.object({
   }),
 });
 
-
 const updateCelebratySchema = z.object({
   params: z.object({
     id: z
@@ -407,7 +418,6 @@ const updateCelebratySchema = z.object({
   }),
   body: z
     .object({
-      // A) Identity & Profile (Core)
       identityProfile: z
         .object({
           name: z
@@ -459,7 +469,6 @@ const updateCelebratySchema = z.object({
         })
         .optional(),
 
-      // B) Personal Details
       personalDetails: z
         .object({
           dob: z
@@ -498,12 +507,46 @@ const updateCelebratySchema = z.object({
         })
         .optional(),
 
-      // C) Family & Relationships
+      lifeStatus: z
+        .object({
+          isAlive: z
+            .union([z.boolean(), z.string()])
+            .transform(stringToBoolean)
+            .optional(),
+          dateOfDeath: z
+            .string({
+              invalid_type_error: "Date of death must be a string",
+            })
+            .regex(
+              /^\d{4}-\d{2}-\d{2}$/,
+              "Date of death must be in YYYY-MM-DD format"
+            )
+            .optional(),
+          placeOfDeath: z
+            .string({
+              invalid_type_error: "Place of death must be a string",
+            })
+            .trim()
+            .optional(),
+          causeOfDeath: z
+            .string({
+              invalid_type_error: "Cause of death must be a string",
+            })
+            .trim()
+            .optional(),
+        })
+        .optional(),
+
       familyRelationships: z
         .object({
           father: familyMemberSchema.optional(),
           mother: familyMemberSchema.optional(),
-          spouse: familyMemberSchema.optional(),
+          spouses: z
+            .union([
+              z.string().transform(stringToArray),
+              z.array(familyMemberSchema),
+            ])
+            .optional(),
           children: z
             .union([
               z.string().transform(stringToArray),
@@ -519,7 +562,6 @@ const updateCelebratySchema = z.object({
         })
         .optional(),
 
-      // D) Professional Identity
       professionalIdentity: z
         .object({
           sections: z
@@ -603,7 +645,6 @@ const updateCelebratySchema = z.object({
         })
         .optional(),
 
-      // E) Location & Public Presence
       locationPresence: z
         .object({
           currentCity: z
@@ -621,7 +662,6 @@ const updateCelebratySchema = z.object({
         })
         .optional(),
 
-      // F) Physical & Public Attributes
       publicAttributes: z
         .object({
           height: z
@@ -640,7 +680,6 @@ const updateCelebratySchema = z.object({
         })
         .optional(),
 
-      // G) Social Links
       socialLinks: z
         .union([
           z.string().transform(stringToArray),
@@ -648,7 +687,6 @@ const updateCelebratySchema = z.object({
         ])
         .optional(),
 
-      // H) SEO Metadata
       seoMetadata: z
         .object({
           tags: z
@@ -680,7 +718,6 @@ const updateCelebratySchema = z.object({
         })
         .optional(),
 
-      // I) Admin Controls
       adminControls: z
         .object({
           isFeatured: z
@@ -702,27 +739,19 @@ const updateCelebratySchema = z.object({
         })
         .optional(),
 
-      // ✅ FIXED - Legacy fields for backward compatibility
       oldGallery: z
-        .union([
-          z.string(),           // String format: "['/path1.jpg','/path2.jpg']"
-          z.array(z.string()),  // Array format: ['/path1.jpg', '/path2.jpg']
-        ])
+        .union([z.string(), z.array(z.string())])
         .optional(),
-      
+
       removeOldImage: z
-        .union([
-          z.string(),           // "true" or "false"
-          z.boolean(),          // true or false
-        ])
+        .union([z.string(), z.boolean()])
         .transform((val) => {
-          if (typeof val === 'boolean') return val;
-          if (typeof val === 'string') return val === 'true';
+          if (typeof val === "boolean") return val;
+          if (typeof val === "string") return val === "true";
           return false;
         })
         .optional(),
-      
-      // ✅ Root level status
+
       status: z
         .union([z.number(), z.string()])
         .transform(stringToNumber)
@@ -734,21 +763,17 @@ const updateCelebratySchema = z.object({
     }),
 });
 
-
 const updateStatusCelebratySchema = z.object({
   body: z.object({
     id: z
       .string({ required_error: "Celebrity ID is required" })
       .regex(/^[0-9a-fA-F]{24}$/, "Invalid Celebrity ID format"),
-
     status: z.union([z.literal(0), z.literal(1)], {
       required_error: "Status is required",
       invalid_type_error: "Status must be 0 (Inactive) or 1 (Active)",
     }),
   }),
 });
-
-
 
 const getCelebratyByIdSchema = z.object({
   params: z.object({
@@ -760,9 +785,6 @@ const getCelebratyByIdSchema = z.object({
   }),
 });
 
-// ========================================
-// 🗑️ DELETE CELEBRITY SCHEMA
-// ========================================
 const deleteCelebratySchema = z.object({
   params: z.object({
     id: z
@@ -773,9 +795,6 @@ const deleteCelebratySchema = z.object({
   }),
 });
 
-// ========================================
-// 📋 GET ALL CELEBRITIES SCHEMA
-// ========================================
 const getAllCelebratySchema = z.object({
   query: z
     .object({
@@ -812,13 +831,15 @@ const getAllCelebratySchema = z.object({
       verificationStatus: z
         .enum(["Not Claimed", "Claim Requested", "Verified"])
         .optional(),
+      isAlive: z
+        .string()
+        .regex(/^(true|false)$/, "isAlive must be true or false")
+        .transform((val) => val === "true")
+        .optional(),
     })
     .optional(),
 });
 
-// ========================================
-// 📑 GET CELEBRITY SECTIONS BY CELEB SCHEMA
-// ========================================
 const getCelebratySectionsByCelebSchema = z.object({
   params: z.object({
     celebratyId: z

@@ -49,7 +49,7 @@ router.get(
  */
 router.get(
   "/getlanguageByid/:id",
-  checkPrivilege(RESOURCES.LANGUAGE, OPERATIONS.VIEW),
+  checkPrivilege(RESOURCES.LANGUAGE, OPERATIONS.EDIT),
   validate(getLanguageSchema),
   languageController.getLanguageById
 );
@@ -61,7 +61,7 @@ router.get(
  */
 router.get(
   "/options",
-  checkPrivilege(RESOURCES.LANGUAGE, OPERATIONS.VIEW),
+  checkPrivilege(RESOURCES.LANGUAGE, OPERATIONS.EDIT),
   languageController.getLanguageOptions
 );
 

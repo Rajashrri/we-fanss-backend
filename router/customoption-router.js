@@ -1,23 +1,26 @@
 const express = require("express");
 const router = express.Router();
 
-const CustomOptionController = require("../controllers/customoption-controller"); // ✅ Proper naming
-const { blogSchema } = require("../validators/auth-validator");
-const validate = require("../middlewares/validate-middleware");
+const CustomOptionController = require("../controllers/customoption-controller");
+const validate = require("../middlewares/validate.middleware");
+const authenticate = require("../middlewares/auth-middleware");
+
+const {
+  createCustomOptionSchema,
+  updateCustomOptionSchema,
+  updateStatusSchema,
+  getDataSchema,
+  deleteCustomOptionSchema,
+  getCustomOptionByIdSchema,
+} = require("../validations/custom.validation");
 
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
-const bodyParser = require("body-parser");
 
-// ✅ Middlewares
-router.use(bodyParser.urlencoded({ extended: true }));
-router.use(express.static(path.resolve(__dirname, "../public"))); // corrected static path
-
-// ✅ File upload handling (if needed later)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const dir = path.resolve("public/customoption");
+    const dir = path.resolve("public/custom-section");
 
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -32,27 +35,44 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Routes
+router.use(authenticate);
+
 router.post(
-  "/addcustomoption",
-  upload.fields([
-    { name: "media", maxCount: 1 },
-  ]),
+  "/",
+  upload.fields([{ name: "media", maxCount: 1 }]),
+  validate(createCustomOptionSchema),
   CustomOptionController.addcustomoption
 );
 
-
-router.patch(
-  "/updatecustomoption/:id",
-  upload.fields([
-    { name: "media", maxCount: 1 },
-  ]),
+router.put(
+  "/:id",
+  upload.fields([{ name: "media", maxCount: 1 }]),
+  validate(updateCustomOptionSchema),
   CustomOptionController.updatecustomoption
 );
 
-router.get("/getdata/:celebrityId", CustomOptionController.getdata);
-router.get("/getcustomoptionByid/:id", CustomOptionController.getcustomoptionByid);
-router.delete("/deletecustomoption/:id", CustomOptionController.deletecustomoption);
-router.patch("/updateStatus", CustomOptionController.updateStatus);
+router.patch(
+  "/:id/status",
+  validate(updateStatusSchema),
+  CustomOptionController.updateStatus
+);
+
+router.get(
+  "/celebrity/:celebrity",
+  validate(getDataSchema),
+  CustomOptionController.getdata
+);
+
+router.get(
+  "/:id",
+  validate(getCustomOptionByIdSchema),
+  CustomOptionController.getcustomoptionByid
+);
+
+router.delete(
+  "/:id",
+  validate(deleteCustomOptionSchema),
+  CustomOptionController.deletecustomoption
+);
 
 module.exports = router;

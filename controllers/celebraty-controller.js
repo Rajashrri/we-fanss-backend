@@ -136,6 +136,7 @@ const addcelebraty = async (req, res, next) => {
     const {
       identityProfile,
       personalDetails,
+      lifeStatus,  // ✅ ADDED: Death/Life status fields
       familyRelationships,
       professionalIdentity,
       locationPresence,
@@ -233,6 +234,11 @@ const addcelebraty = async (req, res, next) => {
         ? JSON.parse(familyRelationships.siblings)
         : familyRelationships?.siblings || [];
 
+    const parseSpouses =
+      typeof familyRelationships?.spouses === "string"
+        ? JSON.parse(familyRelationships.spouses)
+        : familyRelationships?.spouses || [];
+
     // ==================== VALIDATE PRIMARY PROFESSION ====================
     if (!parseProfessions.includes(professionalIdentity.primaryProfession)) {
       throw createHttpError(
@@ -251,6 +257,35 @@ const addcelebraty = async (req, res, next) => {
         400,
         "Primary language must be one of the selected languages"
       );
+    }
+
+    // ✅ ==================== VALIDATE LIFE STATUS ====================
+    // Convert string 'true'/'false' to boolean if needed
+    const isAlive = lifeStatus?.isAlive === 'true' || lifeStatus?.isAlive === true;
+    
+    console.log("=== Life Status Debug (Backend) ===");
+    console.log("Received lifeStatus:", lifeStatus);
+    console.log("isAlive (parsed):", isAlive);
+    console.log("dateOfDeath:", lifeStatus?.dateOfDeath);
+    console.log("placeOfDeath:", lifeStatus?.placeOfDeath);
+    console.log("causeOfDeath:", lifeStatus?.causeOfDeath);
+    console.log("===================================");
+
+    // Validate death date is not in future
+    if (!isAlive && lifeStatus?.dateOfDeath) {
+      const deathDate = new Date(lifeStatus.dateOfDeath);
+      const today = new Date();
+      if (deathDate > today) {
+        throw createHttpError(400, "Date of death cannot be in the future");
+      }
+
+      // Validate death date is after birth date
+      if (personalDetails?.dob) {
+        const birthDate = new Date(personalDetails.dob);
+        if (deathDate < birthDate) {
+          throw createHttpError(400, "Date of death cannot be before date of birth");
+        }
+      }
     }
 
     // ==================== CREATE CELEBRITY ====================
@@ -278,18 +313,26 @@ const addcelebraty = async (req, res, next) => {
           }
         : {},
 
-      // C) Family & Relationships
+      // ✅ C) Life Status (NEW - Death/Alive status)
+      lifeStatus: {
+        isAlive: isAlive,
+        dateOfDeath: !isAlive && lifeStatus?.dateOfDeath ? lifeStatus.dateOfDeath : null,
+        placeOfDeath: !isAlive && lifeStatus?.placeOfDeath ? lifeStatus.placeOfDeath : "",
+        causeOfDeath: !isAlive && lifeStatus?.causeOfDeath ? lifeStatus.causeOfDeath : "",
+      },
+
+      // D) Family & Relationships
       familyRelationships: familyRelationships
         ? {
             father: familyRelationships.father || {},
             mother: familyRelationships.mother || {},
-            spouse: familyRelationships.spouse || {},
+            spouses: parseSpouses,
             children: parseChildren,
             siblings: parseSiblings,
           }
         : {},
 
-      // D) Professional Identity
+      // E) Professional Identity
       professionalIdentity: {
         sections: parseSections,
         professions: parseProfessions,
@@ -304,7 +347,7 @@ const addcelebraty = async (req, res, next) => {
             : true,
       },
 
-      // E) Location & Public Presence
+      // F) Location & Public Presence
       locationPresence: locationPresence
         ? {
             currentCity: locationPresence.currentCity || "",
@@ -312,7 +355,7 @@ const addcelebraty = async (req, res, next) => {
           }
         : {},
 
-      // F) Physical & Public Attributes
+      // G) Physical & Public Attributes
       publicAttributes: publicAttributes
         ? {
             height: publicAttributes.height || "",
@@ -320,10 +363,10 @@ const addcelebraty = async (req, res, next) => {
           }
         : {},
 
-      // G) Social Links
+      // H) Social Links
       socialLinks: parseSocialLinks,
 
-      // H) SEO Metadata
+      // I) SEO Metadata
       seoMetadata: seoMetadata
         ? {
             tags: parseTags,
@@ -333,7 +376,7 @@ const addcelebraty = async (req, res, next) => {
           }
         : {},
 
-      // I) Admin Controls
+      // J) Admin Controls
       adminControls: adminControls
         ? {
             isFeatured: adminControls.isFeatured || false,
@@ -342,7 +385,7 @@ const addcelebraty = async (req, res, next) => {
           }
         : {},
 
-      // J) Audit Trail
+      // K) Audit Trail
       auditTrail: {
         createdBy,
         updatedBy: null,
@@ -350,10 +393,10 @@ const addcelebraty = async (req, res, next) => {
         publishedAt: identityProfile.status === "Published" ? new Date() : null,
       },
 
-      // K) Root level status (Active/Inactive)
+      // L) Root level status (Active/Inactive)
       status: 1,
 
-      // L) Analytics & Engagement
+      // M) Analytics & Engagement
       analyticsEngagement: {
         viewCount: 0,
         followerCount: 0,
@@ -362,20 +405,22 @@ const addcelebraty = async (req, res, next) => {
         searchBoostScore: 0,
       },
 
-      // M) Profile Quality
+      // N) Profile Quality
       profileQuality: {
         profileCompletionPercentage: 0, // Calculate later if needed
       },
     });
 
     const celebId = newCelebraty._id.toString();
-    console.log("✅ Celebrity created:", celebId);
+    console.log("✅ Celebrity created with ID:", celebId);
+    console.log("✅ Life Status saved:", newCelebraty.lifeStatus);
 
     // ==================== FILES PROCESS ====================
     // ✅ Centralized helper — move + rename + paths return karta hai
     const { imagePath, galleryPaths } = processCelebrityFiles(req.files, celebId);
 
-    console.log(imagePath , galleryPaths)
+    console.log("Image Path:", imagePath);
+    console.log("Gallery Paths:", galleryPaths);
 
     // ✅ DB mein paths update karo
     if (imagePath || galleryPaths.length > 0) {
@@ -483,6 +528,8 @@ const addcelebraty = async (req, res, next) => {
 
 
 
+
+
 /**
  * Get all celebrities with pagination and filters - MINIMAL DATA FOR LISTING
  */
@@ -575,10 +622,22 @@ const getcelebratyByid = async (req, res, next) => {
       throw createHttpError(404, "Celebrity not found");
     }
 
+    // Prepare response data with death information
+    const responseData = {
+      ...celebrity.toObject(),
+      age: celebrity.age, // This will calculate age correctly based on death date if deceased
+      lifeStatus: {
+        isAlive: celebrity.lifeStatus?.isAlive ?? true,
+        dateOfDeath: celebrity.lifeStatus?.dateOfDeath || null,
+        placeOfDeath: celebrity.lifeStatus?.placeOfDeath || null,
+        causeOfDeath: celebrity.lifeStatus?.causeOfDeath || null,
+      },
+    };
+
     return res.status(200).json({
       success: true,
       message: "Celebrity retrieved successfully",
-      data: celebrity,
+      data: responseData,
     });
   } catch (error) {
     next(error);
@@ -594,6 +653,7 @@ const updatecelebraty = async (req, res, next) => {
     const {
       identityProfile,
       personalDetails,
+      lifeStatus,  // ✅ ADDED: Death/Life status fields
       familyRelationships,
       professionalIdentity,
       locationPresence,
@@ -638,6 +698,38 @@ const updatecelebraty = async (req, res, next) => {
       });
       if (existingInHistory) {
         throw createHttpError(409, "Slug conflicts with historical slug");
+      }
+    }
+
+    // ✅ ==================== VALIDATE LIFE STATUS ====================
+    if (lifeStatus) {
+      // Convert string 'true'/'false' to boolean if needed
+      const isAlive = lifeStatus.isAlive === 'true' || lifeStatus.isAlive === true;
+      
+      console.log("=== Life Status Debug (Backend Update) ===");
+      console.log("Received lifeStatus:", lifeStatus);
+      console.log("isAlive (parsed):", isAlive);
+      console.log("dateOfDeath:", lifeStatus.dateOfDeath);
+      console.log("placeOfDeath:", lifeStatus.placeOfDeath);
+      console.log("causeOfDeath:", lifeStatus.causeOfDeath);
+      console.log("=========================================");
+
+      // Validate death date is not in future
+      if (!isAlive && lifeStatus.dateOfDeath) {
+        const deathDate = new Date(lifeStatus.dateOfDeath);
+        const today = new Date();
+        if (deathDate > today) {
+          throw createHttpError(400, "Date of death cannot be in the future");
+        }
+
+        // Validate death date is after birth date (if dob exists)
+        const dobToCheck = personalDetails?.dob || existingCelebraty.personalDetails?.dob;
+        if (dobToCheck) {
+          const birthDate = new Date(dobToCheck);
+          if (deathDate < birthDate) {
+            throw createHttpError(400, "Date of death cannot be before date of birth");
+          }
+        }
       }
     }
 
@@ -740,6 +832,10 @@ const updatecelebraty = async (req, res, next) => {
       ? JSON.parse(familyRelationships.siblings)
       : familyRelationships?.siblings;
 
+    const parsedSpouses = typeof familyRelationships?.spouses === 'string'
+      ? JSON.parse(familyRelationships.spouses)
+      : familyRelationships?.spouses;
+
     // ==================== BUILD UPDATE OBJECT ====================
     const updateFields = {};
     
@@ -779,16 +875,49 @@ const updatecelebraty = async (req, res, next) => {
       if (personalDetails.religion !== undefined) updateFields["personalDetails.religion"] = personalDetails.religion;
     }
 
-    // C) Family Relationships
+    // ✅ C) Life Status (NEW - Death/Alive status)
+    if (lifeStatus) {
+      // Convert string 'true'/'false' to boolean
+      const isAlive = lifeStatus.isAlive === 'true' || lifeStatus.isAlive === true;
+      
+      updateFields["lifeStatus.isAlive"] = isAlive;
+      
+      if (!isAlive) {
+        // Only update death fields if person is not alive
+        if (lifeStatus.dateOfDeath !== undefined) {
+          updateFields["lifeStatus.dateOfDeath"] = lifeStatus.dateOfDeath || null;
+        }
+        if (lifeStatus.placeOfDeath !== undefined) {
+          updateFields["lifeStatus.placeOfDeath"] = lifeStatus.placeOfDeath || "";
+        }
+        if (lifeStatus.causeOfDeath !== undefined) {
+          updateFields["lifeStatus.causeOfDeath"] = lifeStatus.causeOfDeath || "";
+        }
+      } else {
+        // If alive, clear death fields
+        updateFields["lifeStatus.dateOfDeath"] = null;
+        updateFields["lifeStatus.placeOfDeath"] = "";
+        updateFields["lifeStatus.causeOfDeath"] = "";
+      }
+      
+      console.log("✅ Life Status fields to update:", {
+        isAlive: updateFields["lifeStatus.isAlive"],
+        dateOfDeath: updateFields["lifeStatus.dateOfDeath"],
+        placeOfDeath: updateFields["lifeStatus.placeOfDeath"],
+        causeOfDeath: updateFields["lifeStatus.causeOfDeath"],
+      });
+    }
+
+    // D) Family Relationships
     if (familyRelationships) {
       if (familyRelationships.father) updateFields["familyRelationships.father"] = familyRelationships.father;
       if (familyRelationships.mother) updateFields["familyRelationships.mother"] = familyRelationships.mother;
-      if (familyRelationships.spouse) updateFields["familyRelationships.spouse"] = familyRelationships.spouse;
-      if (parsedChildren) updateFields["familyRelationships.children"] = parsedChildren;
-      if (parsedSiblings) updateFields["familyRelationships.siblings"] = parsedSiblings;
+      if (parsedSpouses !== undefined) updateFields["familyRelationships.spouses"] = parsedSpouses;
+      if (parsedChildren !== undefined) updateFields["familyRelationships.children"] = parsedChildren;
+      if (parsedSiblings !== undefined) updateFields["familyRelationships.siblings"] = parsedSiblings;
     }
 
-    // D) Professional Identity
+    // E) Professional Identity
     if (professionalIdentity) {
       if (parsedProfessions !== undefined) updateFields["professionalIdentity.professions"] = parsedProfessions;
       if (professionalIdentity.primaryProfession !== undefined) updateFields["professionalIdentity.primaryProfession"] = professionalIdentity.primaryProfession;
@@ -800,7 +929,7 @@ const updatecelebraty = async (req, res, next) => {
       if (professionalIdentity.isCareerOngoing !== undefined) updateFields["professionalIdentity.isCareerOngoing"] = professionalIdentity.isCareerOngoing;
     }
 
-    // E) Location Presence
+    // F) Location Presence
     if (locationPresence) {
       if (locationPresence.currentCity !== undefined) updateFields["locationPresence.currentCity"] = locationPresence.currentCity;
       if (locationPresence.knownForRegion !== undefined) {
@@ -811,16 +940,16 @@ const updatecelebraty = async (req, res, next) => {
       }
     }
 
-    // F) Public Attributes
+    // G) Public Attributes
     if (publicAttributes) {
       if (publicAttributes.height !== undefined) updateFields["publicAttributes.height"] = publicAttributes.height;
       if (publicAttributes.signatureStyle !== undefined) updateFields["publicAttributes.signatureStyle"] = publicAttributes.signatureStyle;
     }
 
-    // G) Social Links
+    // H) Social Links
     if (parsedSocialLinks !== undefined) updateFields["socialLinks"] = parsedSocialLinks;
 
-    // H) SEO Metadata
+    // I) SEO Metadata
     if (seoMetadata) {
       if (seoMetadata.tags !== undefined) {
         const parsedTags = typeof seoMetadata.tags === 'string' 
@@ -838,17 +967,17 @@ const updatecelebraty = async (req, res, next) => {
       }
     }
 
-    // I) Admin Controls
+    // J) Admin Controls
     if (adminControls) {
       if (adminControls.isFeatured !== undefined) updateFields["adminControls.isFeatured"] = adminControls.isFeatured;
       if (adminControls.verificationStatus !== undefined) updateFields["adminControls.verificationStatus"] = adminControls.verificationStatus;
       if (adminControls.internalNotes !== undefined) updateFields["adminControls.internalNotes"] = adminControls.internalNotes;
     }
 
-    // J) Root level status
+    // K) Root level status
     if (status !== undefined) updateFields["status"] = status;
 
-    // K) Update audit trail
+    // L) Update audit trail
     updateFields["auditTrail.updatedBy"] = req.user?.userId;
 
     // ==================== UPDATE CELEBRITY ====================
@@ -866,6 +995,7 @@ const updatecelebraty = async (req, res, next) => {
     );
 
     console.log("✅ Celebrity updated successfully");
+    console.log("✅ Life Status saved:", updatedCelebraty.lifeStatus);
 
     // ==================== SYNC SECTIONS ====================
     if (parsedProfessions && parsedProfessions.length > 0) {

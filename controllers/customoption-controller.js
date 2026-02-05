@@ -1,177 +1,251 @@
 const CustomOption = require("../models/customoption-model");
 const fs = require("fs");
 const path = require("path");
-// Utility: Create clean URL from title
-function createCleanUrl(title) {
-  let cleanTitle = title
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-");
-  return cleanTitle;
-}
+const generateSlug = require("../utils/helper/slugHelper");
+const createError = require("http-errors");
 
-// Utility: Format date as dd-mm-yyyy hh:mm:ss
-const formatDateDMY = (date) => {
-  const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-  const seconds = String(d.getSeconds()).padStart(2, "0");
-
-  return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
-};
-
-// Create new customoption
-const addcustomoption = async (req, res) => {
+const addcustomoption = async (req, res, next) => {
   try {
-    const { title, description, createdBy, celebrityId } =
-      req.body;
-    const url = createCleanUrl(req.body.title);
+    const { title, description, celebrity } = req.body;
+    
+    const slug = generateSlug({ name: title });
 
-    // Handle uploaded media file
-    const mainImage = req.files?.["media"]
-      ? req.files["media"][0].filename
-      : "";
+    // Check if already exists
+    const existingOption = await CustomOption.findOne({
+      $or: [
+        { title: title.trim() },
+        { slug: slug }
+      ],
+    });
 
-    const now = new Date();
-    const createdAt = formatDateDMY(now);
+    if (existingOption) {
+      throw createError(409, "Custom option already exists with this title or slug");
+    }
+
+    const mediaFile = req.files?.["media"] ? req.files["media"][0] : null;
+    
+    let mediaData = undefined;
+    if (mediaFile) {
+      // Determine media type from mimetype
+      const mediaType = mediaFile.mimetype.startsWith('video/') ? 'video' : 'image';
+      
+      mediaData = {
+        path: `/custom-section/${mediaFile.filename}`,
+        type: mediaType
+      };
+    }
 
     const newCustomOption = new CustomOption({
-      title,
+      title: title.trim(),
+      slug,
       description,
-      media: mainImage,
-      status: 1, // default active
-      createdAt,
-      url,
-    
-      celebrityId, // movie belongs to this celebrity
-      createdBy,
+      media: mediaData,
+      celebrity,
+      createdBy: req.user.userId,
     });
 
     await newCustomOption.save();
 
-    // ✅ Include success flag
-    return res.json({
+    return res.status(201).json({
       success: true,
-      msg: "CustomOption added successfully",
+      message: "Custom option created successfully",
       data: newCustomOption,
     });
   } catch (error) {
-    console.error("Add CustomOption Error:", error);
-    return res.status(500).json({
-      success: false,
-      msg: "Server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const updatecustomoption = async (req, res) => {
+const updatecustomoption = async (req, res, next) => {
   try {
-    const { title, description} = req.body;
+    const { title, description, celebrity, status } = req.body;
     const customoptionId = req.params.id;
 
     const customoption = await CustomOption.findById(customoptionId);
     if (!customoption) {
-      return res.status(404).json({ msg: "CustomOption not found" });
+      throw createError(404, "Custom option not found");
     }
 
-    // ✅ Update name
-    if (title) customoption.title = title;
-    if (description) customoption.description = description;
-   
+    // Check for duplicates if title is being updated
+    if (title) {
+      const newSlug = generateSlug({ name: title });
+      
+      const duplicate = await CustomOption.findOne({
+        $and: [
+          { _id: { $ne: customoptionId } },
+          {
+            $or: [
+              { title: title.trim() },
+              { slug: newSlug },
+            ],
+          },
+        ],
+      });
 
-    // ✅ Handle file upload
-    const newImageFile =
-      (req.files && req.files.media && req.files.media[0]) || req.file;
-
-    if (newImageFile) {
-      // delete old image if exists
-      if (customoption.media) {
-        const oldPath = path.join(
-          __dirname,
-          "../public/customoption/",
-          customoption.media
-        );
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      if (duplicate) {
+        throw createError(409, "Custom option with this title or slug already exists");
       }
 
-      customoption.media = newImageFile.filename;
+      customoption.title = title.trim();
+      customoption.slug = newSlug;
+    }
+
+    if (description !== undefined) customoption.description = description;
+    if (celebrity !== undefined) customoption.celebrity = celebrity;
+    if (status !== undefined) customoption.status = status;
+
+    const newImageFile = (req.files && req.files.media && req.files.media[0]) || req.file;
+
+    if (newImageFile) {
+      if (customoption.media && customoption.media.path) {
+        const oldImageName = path.basename(customoption.media.path);
+        const oldPath = path.join(__dirname, "../public/custom-section/", oldImageName);
+        if (fs.existsSync(oldPath)) {
+          try {
+            fs.unlinkSync(oldPath);
+            console.log("🗑️ Old media deleted");
+          } catch (err) {
+            console.error("❌ Failed to delete old media:", err);
+          }
+        }
+      }
+
+      // Determine media type from mimetype
+      const mediaType = newImageFile.mimetype.startsWith('video/') ? 'video' : 'image';
+
+      customoption.media = {
+        path: `/custom-section/${newImageFile.filename}`,
+        type: mediaType
+      };
     }
 
     await customoption.save();
 
-    res.status(200).json({ msg: "CustomOption updated successfully", customoption });
+    res.status(200).json({ 
+      success: true,
+      message: "Custom option updated successfully", 
+      data: customoption 
+    });
   } catch (error) {
-    console.error("Error updating CustomOption:", error);
-    res.status(500).json({ msg: "Server error", error: error.message });
+    next(error);
   }
 };
 
-// Update status
-const updateStatus = async (req, res) => {
+const updateStatus = async (req, res, next) => {
   try {
     const { status, id } = req.body;
 
-    await CustomOption.updateOne({ _id: id }, { $set: { status } }, { new: true });
-
-    res.status(200).json({ msg: "Status updated successfully" });
-  } catch (error) {
-    res.status(500).json({ msg: "Server Error", error: error.message });
-  }
-};
-
-// Update customoption
-
-// Get all customoptions
-const getdata = async (req, res) => {
-  try {
-     const { celebrityId } = req.params;
-    const response = await CustomOption.find({ celebrityId });
-    if (!response || response.length === 0) {
-      return res.status(404).json({ msg: "No data found" });
+    if (!id) {
+      throw createError(400, "Custom option ID is required");
     }
 
-    res.status(200).json({ msg: response });
-  } catch (error) {
-    res.status(500).json({ msg: "Server Error", error: error.message });
-  }
-};
-
-// Delete customoption
-const deletecustomoption = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const response = await CustomOption.findOneAndDelete({ _id: id });
-
-    if (!response) {
-      return res.status(404).json({ msg: "No data found" });
+    if (status === undefined || status === null) {
+      throw createError(400, "Status is required");
     }
 
-    res.status(200).json({ msg: "CustomOption deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ msg: "Server Error", error: error.message });
-  }
-};
+    if (![0, 1].includes(status)) {
+      throw createError(400, "Status must be either 0 (inactive) or 1 (active)");
+    }
 
-// Get customoption by ID
-const getcustomoptionByid = async (req, res) => {
-  try {
-    const customoption = await CustomOption.findOne({ _id: req.params.id });
+    const customoption = await CustomOption.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true, runValidators: true }
+    );
 
     if (!customoption) {
-      return res.status(404).json({ msg: "No data found" });
+      throw createError(404, "Custom option not found");
     }
 
-    res.status(200).json({ msg: customoption });
+    res.status(200).json({ 
+      success: true,
+      message: "Status updated successfully",
+      data: {
+        customOptionId: customoption._id.toString(),
+        status: customoption.status,
+      }
+    });
   } catch (error) {
-    res.status(500).json({ msg: "Server Error", error: error.message });
+    next(error);
   }
 };
 
-// Export all
+const getdata = async (req, res, next) => {
+  try {
+    const { celebrity } = req.params;
+    const response = await CustomOption.find({ celebrity })
+      .populate('celebrity', 'name')
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ 
+      success: true,
+      message: "Data retrieved successfully",
+      data: response,
+      meta: {
+        count: response.length,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deletecustomoption = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const customoption = await CustomOption.findByIdAndDelete(id);
+
+    if (!customoption) {
+      throw createError(404, "Custom option not found");
+    }
+
+    // Delete media if exists
+    if (customoption.media && customoption.media.path) {
+      const mediaName = path.basename(customoption.media.path);
+      const mediaPath = path.join(__dirname, "../public/custom-section/", mediaName);
+      if (fs.existsSync(mediaPath)) {
+        try {
+          fs.unlinkSync(mediaPath);
+          console.log("🗑️ Media deleted");
+        } catch (err) {
+          console.error("❌ Failed to delete media:", err);
+        }
+      }
+    }
+
+    res.status(200).json({ 
+      success: true,
+      message: "Custom option deleted successfully",
+      data: {
+        customOptionId: id,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getcustomoptionByid = async (req, res, next) => {
+  try {
+    const customoption = await CustomOption.findById(req.params.id)
+      .populate('celebrity', 'name')
+      .populate('createdBy', 'name email');
+
+    if (!customoption) {
+      throw createError(404, "Custom option not found");
+    }
+
+    res.status(200).json({ 
+      success: true,
+      message: "Data retrieved successfully",
+      data: customoption 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   addcustomoption,
   updateStatus,

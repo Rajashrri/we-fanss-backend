@@ -7,7 +7,12 @@ const { STATIC_ROLES } = require("../config/role-config");
  * Usage: checkPrivilege(RESOURCES.CELEBRITY, OPERATIONS.ADD)
  */
 const checkPrivilege = (resource, operation) => {
+
+
   return async (req, res, next) => {
+
+    console.log("⚙️ checkPrivilege args:", { resource, operation });
+
     try {
       const { roleName, roleId } = req.user;
 

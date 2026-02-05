@@ -38,7 +38,6 @@ const celebratySchema = new Schema(
       ],
       image: {
         type: String,
-       
         trim: true,
       },
       gallery: [
@@ -49,12 +48,14 @@ const celebratySchema = new Schema(
       ],
       shortinfo: {
         type: String,
+        required: true, // ✅ NOW REQUIRED
         trim: true,
         minlength: 10,
         maxlength: 500,
       },
       biography: {
         type: String,
+        required: true, // ✅ NOW REQUIRED
         trim: true,
       },
       status: {
@@ -69,6 +70,7 @@ const celebratySchema = new Schema(
     personalDetails: {
       dob: {
         type: Date,
+        required: true, 
       },
       birthplace: {
         type: String,
@@ -77,6 +79,7 @@ const celebratySchema = new Schema(
       gender: {
         type: String,
         enum: ["Male", "Female", "Other", "Prefer not to say"],
+        required: true, 
         trim: true,
       },
       nationality: {
@@ -84,6 +87,26 @@ const celebratySchema = new Schema(
         trim: true,
       },
       religion: {
+        type: String,
+        trim: true,
+      },
+    },
+
+    
+    lifeStatus: {
+      isAlive: {
+        type: Boolean,
+        default: true,
+        index: true,
+      },
+      dateOfDeath: {
+        type: Date,
+      },
+      placeOfDeath: {
+        type: String,
+        trim: true,
+      },
+      causeOfDeath: {
         type: String,
         trim: true,
       },
@@ -111,16 +134,23 @@ const celebratySchema = new Schema(
           default: false,
         },
       },
-      spouse: {
-        name: {
-          type: String,
-          trim: true,
+      
+      spouses: [
+        {
+          name: {
+            type: String,
+            trim: true,
+          },
+          profession: {
+            type: String,
+            trim: true,
+          },
+          showOnPublicProfile: {
+            type: Boolean,
+            default: false,
+          },
         },
-        showOnPublicProfile: {
-          type: Boolean,
-          default: false,
-        },
-      },
+      ],
       children: [
         {
           name: {
@@ -155,9 +185,7 @@ const celebratySchema = new Schema(
       ],
     },
 
-    // ========================================
-    // 💼 D) PROFESSIONAL IDENTITY
-    // ========================================
+    
     professionalIdentity: {
       sections: [
         {
@@ -165,17 +193,25 @@ const celebratySchema = new Schema(
           ref: "SectionMaster",
         },
       ],
-      professions: [
-        {
-          type: Schema.Types.ObjectId,
-          ref: "Profession",
-          required: true,
+      professions: {
+        type: [
+          {
+            type: Schema.Types.ObjectId,
+            ref: "Profession",
+          },
+        ],
+        required: true,
+        validate: {
+          validator: function (v) {
+            return v && v.length > 0;
+          },
+          message: "At least one profession is required",
         },
-      ],
+      },
       primaryProfession: {
         type: Schema.Types.ObjectId,
         ref: "Profession",
-        required: true,
+        
       },
       languages: [
         {
@@ -186,6 +222,7 @@ const celebratySchema = new Schema(
       primaryLanguage: {
         type: Schema.Types.ObjectId,
         ref: "Language",
+       
       },
       careerStartYear: {
         type: Number,
@@ -203,9 +240,7 @@ const celebratySchema = new Schema(
       },
     },
 
-    // ========================================
-    // 📍 E) LOCATION & PUBLIC PRESENCE
-    // ========================================
+    
     locationPresence: {
       currentCity: {
         type: String,
@@ -219,9 +254,7 @@ const celebratySchema = new Schema(
       ],
     },
 
-    // ========================================
-    // ✨ F) PHYSICAL & PUBLIC ATTRIBUTES
-    // ========================================
+    
     publicAttributes: {
       height: {
         type: String,
@@ -234,9 +267,7 @@ const celebratySchema = new Schema(
       },
     },
 
-    // ========================================
-    // 🌐 G) OFFICIAL LINKS & SOCIAL MEDIA
-    // ========================================
+   
     socialLinks: [
       {
         platform: {
@@ -250,16 +281,13 @@ const celebratySchema = new Schema(
           required: true,
         },
         label: {
-          // For "Other" platform custom links
+          
           type: String,
           trim: true,
         },
       },
     ],
 
-    // ========================================
-    // 🔍 H) EXTRA METADATA / TAGS (SEO)
-    // ========================================
     seoMetadata: {
       tags: [
         {
@@ -285,9 +313,7 @@ const celebratySchema = new Schema(
       ],
     },
 
-    // ========================================
-    // 🟡 I) ADMIN-ONLY FIELDS
-    // ========================================
+   
     adminControls: {
       isFeatured: {
         type: Boolean,
@@ -304,9 +330,7 @@ const celebratySchema = new Schema(
       },
     },
 
-    // ========================================
-    // 🔒 J) SYSTEM FIELDS - AUDIT TRAIL
-    // ========================================
+    
     auditTrail: {
       createdBy: {
         type: Schema.Types.ObjectId,
@@ -326,20 +350,19 @@ const celebratySchema = new Schema(
     },
 
     
-      rejectionReason: {
-        type: String,
-        trim: true,
-      },
-
-
-     status: {
-  type: Number,
-  enum: [0,1],
-  default: 1,
-  index: true
-},
+    rejectionReason: {
+      type: String,
+      trim: true,
+    },
 
     
+    status: {
+      type: Number,
+      enum: [0, 1],
+      default: 1,
+      index: true,
+    },
+
     
     analyticsEngagement: {
       viewCount: {
@@ -369,9 +392,7 @@ const celebratySchema = new Schema(
       },
     },
 
-    // ========================================
-    // 🧮 M) SYSTEM FIELDS - PROFILE QUALITY
-    // ========================================
+   
     profileQuality: {
       profileCompletionPercentage: {
         type: Number,
@@ -382,70 +403,97 @@ const celebratySchema = new Schema(
     },
   },
   {
-    timestamps: true, // Auto-adds createdAt, updatedAt
+    timestamps: true, 
   }
 );
 
-// ========================================
-// 🧮 VIRTUAL FIELD - AGE (Auto-calculated from DOB)
-// ========================================
+
 celebratySchema.virtual("age").get(function () {
   if (!this.personalDetails?.dob) return null;
-  const today = new Date();
+
+  const endDate =
+    !this.lifeStatus?.isAlive && this.lifeStatus?.dateOfDeath
+      ? new Date(this.lifeStatus.dateOfDeath)
+      : new Date();
+
   const birthDate = new Date(this.personalDetails.dob);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
+  let age = endDate.getFullYear() - birthDate.getFullYear();
+  const monthDiff = endDate.getMonth() - birthDate.getMonth();
+
   if (
     monthDiff < 0 ||
-    (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    (monthDiff === 0 && endDate.getDate() < birthDate.getDate())
   ) {
     age--;
   }
   return age;
 });
 
-// ========================================
-// 🪝 PRE-SAVE MIDDLEWARE - SLUG HISTORY TRACKING
-// ========================================
-celebratySchema.pre("save", function (next) {
-  // Track slug changes
+
+celebratySchema.pre("save", async function (next) {
+  
   if (this.isModified("identityProfile.slug") && !this.isNew) {
-    // Get the old slug value before it changes
-    this.constructor
-      .findById(this._id)
-      .then((oldDoc) => {
-        if (oldDoc && oldDoc.identityProfile.slug !== this.identityProfile.slug) {
-          // Add old slug to history
-          this.identityProfile.slugHistory.push({
-            slug: oldDoc.identityProfile.slug,
-            changedAt: new Date(),
-            changedBy: this.auditTrail.updatedBy,
-          });
-        }
-        next();
-      })
-      .catch((err) => next(err));
+    try {
+      
+      const oldDoc = await this.constructor
+        .findById(this._id)
+        .select("identityProfile.slug");
+
+      if (oldDoc && oldDoc.identityProfile.slug !== this.identityProfile.slug) {
+        
+        this.identityProfile.slugHistory.push({
+          slug: oldDoc.identityProfile.slug,
+          changedAt: new Date(),
+
+          changedBy: this.auditTrail.updatedBy || null,
+        });
+      }
+      next();
+    } catch (err) {
+      next(err);
+    }
   } else {
     next();
   }
 });
 
-// ========================================
-// 📋 INDEXES FOR PERFORMANCE
-// ========================================
+
+celebratySchema.pre("save", function (next) {
+  
+  if (this.lifeStatus && !this.lifeStatus.isAlive) {
+    
+    if (!this.personalDetails?.dob) {
+      return next(new Error("Date of birth is required when person is marked as deceased"));
+    }
+
+    if (!this.lifeStatus.dateOfDeath) {
+      return next(new Error("Date of death is required when person is marked as not alive"));
+    }
+    // Death date cannot be in the future
+    if (this.lifeStatus.dateOfDeath > new Date()) {
+      return next(new Error("Date of death cannot be in the future"));
+    }
+    // Death date should be after birth date
+    if (this.personalDetails?.dob && this.lifeStatus.dateOfDeath < this.personalDetails.dob) {
+      return next(new Error("Date of death cannot be before date of birth"));
+    }
+  }
+  next();
+});
+
+
 celebratySchema.index({ "identityProfile.slug": 1 });
 celebratySchema.index({ "identityProfile.status": 1 });
-celebratySchema.index({ "identityProfile.slugHistory.slug": 1 }); // Index old slugs for redirects
+celebratySchema.index({ "identityProfile.slugHistory.slug": 1 }, { sparse: true }); 
 celebratySchema.index({ "adminControls.isFeatured": 1 });
 celebratySchema.index({ "adminControls.verificationStatus": 1 });
+celebratySchema.index({ "lifeStatus.isAlive": 1 });
 celebratySchema.index({ createdAt: -1 });
 celebratySchema.index({ "auditTrail.publishedAt": -1 });
 celebratySchema.index({ "analyticsEngagement.popularityScore": -1 });
 celebratySchema.index({ "analyticsEngagement.trendingScore": -1 });
 
-// ========================================
-// ⚙️ ENABLE VIRTUALS IN JSON/OBJECT
-// ========================================
+
 celebratySchema.set("toJSON", { virtuals: true });
 celebratySchema.set("toObject", { virtuals: true });
 

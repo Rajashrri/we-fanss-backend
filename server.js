@@ -76,6 +76,9 @@ app.use('/series', express.static(path.join(__dirname, 'public/series')));
 app.use('/election', express.static(path.join(__dirname, 'public/election')));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+
+app.use("/custom-section", express.static(path.join(__dirname, "public/custom-section")));
+
 app.use('/positions', express.static(path.join(__dirname, 'public/positions')));
 app.use('/sectionmaster', express.static(path.join(__dirname, 'public/sectionmaster')));
 
@@ -115,8 +118,8 @@ app.use("/api/ckeditor", ckeditorRoute);
 app.use('/api/references', require('./router/references-router'));
 app.use('/api/related-personalities', require('./router/relatedpersonality-routes'));
 
-
-app.use('/api/options', require('./router/options-router'));
+app.use('/api/custom-sections' , require('./router/customoption-router'))
+app.use('/api/option', require('./router/options-router'));
 
 // app.use("/api/references", referenceRoute); 
 
