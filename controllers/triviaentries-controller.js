@@ -63,8 +63,10 @@ const addtriviaentries = async (req, res) => {
 const categoryOptions = async (req, res) => {
   try {
     const categories = await TriviaTypes.find({ status: 1 });
-    if (!categories.length) return res.status(404).json({ msg: "No categories found" });
-    res.status(200).json({ msg: categories });
+    return res.status(200).json({
+      success: true,
+      data: categories || []
+    });
   } catch (error) {
     console.error("Category Fetch Error:", error);
     res.status(500).json({ msg: "Server error" });
@@ -76,8 +78,10 @@ const getdatatriviaentries = async (req, res) => {
   try {
      const { celebrityId } = req.params;
     const data = await Triviaentries.find({ celebrityId });
-    if (!data.length) return res.status(404).json({ msg: "No entries found" });
-    res.status(200).json({ msg: data });
+    return res.status(200).json({
+      success: true,
+      data: data || []
+    });
   } catch (error) {
     console.error("Fetch Error:", error);
     res.status(500).json({ msg: "Server error" });

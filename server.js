@@ -121,6 +121,9 @@ app.use('/api/related-personalities', require('./router/relatedpersonality-route
 app.use('/api/custom-sections' , require('./router/customoption-router'))
 app.use('/api/option', require('./router/options-router'));
 
+
+app.use("/api/celebrity-sections", require("./router/celebratysection-router"));
+
 // app.use("/api/references", referenceRoute); 
 
 

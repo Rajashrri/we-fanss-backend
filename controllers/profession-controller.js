@@ -455,6 +455,42 @@ const deleteProfessional = async (req, res, next) => {
   }
 };
 
+
+// Get professions by celebrity ID
+const getProfessionsByCelebrityId = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const celebrity = await Celebraty.findById(id)
+      .populate("professionalIdentity.professions", "name")
+      .populate("professionalIdentity.primaryProfession", "name")
+      .select("professionalIdentity.professions professionalIdentity.primaryProfession identityProfile.name");
+
+    if (!celebrity) {
+      return res.status(404).json({
+        success: false,
+        message: "Celebrity not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        celebrityId: celebrity._id,
+        celebrityName: celebrity.identityProfile.name,
+        professions: celebrity.professionalIdentity.professions,
+        primaryProfession: celebrity.professionalIdentity.primaryProfession,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching professions",
+      error: error.message,
+    });
+  }
+};
+
 // ==================== EXPORTS ====================
 
 module.exports = {
@@ -466,4 +502,5 @@ module.exports = {
   getProfessionalById,
   deleteProfessional,
   syncCelebritySections,
+  getProfessionsByCelebrityId 
 };

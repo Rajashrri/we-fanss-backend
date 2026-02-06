@@ -132,9 +132,10 @@ const getdata = async (req, res) => {
   try {
      const { celebrityId } = req.params;
     const response = await Timeline.find({ celebrityId });
-    if (!response || response.length === 0) {
-      return res.status(404).json({ msg: "No data found" });
-    }
+    return res.status(200).json({
+      success: true,
+      data: response || []
+    });
 
     res.status(200).json({ msg: response });
   } catch (error) {

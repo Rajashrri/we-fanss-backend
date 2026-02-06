@@ -174,7 +174,7 @@ const getdata = async (req, res, next) => {
   try {
     const { celebrity } = req.params;
     const response = await CustomOption.find({ celebrity })
-      .populate('celebrity', 'name')
+      .populate('celebrity', 'identityProfile.name identityProfile.image identityProfile.slug')
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
 

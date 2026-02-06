@@ -66,6 +66,19 @@ router.get(
   ProfessionalController.getAllProfessionals
 );
 
+
+/**
+ * @route   GET /api/professional/celebrity/:id/professions
+ * @desc    Get professions by celebrity ID
+ * @access  Private - Super Admin, Admin only
+ */
+
+
+router.get(
+  "/celebrity/:id/professions",
+  ProfessionalController.getProfessionsByCelebrityId
+);
+
 /**
  * @route   GET /api/professional/:id
  * @desc    Get a single professional by ID

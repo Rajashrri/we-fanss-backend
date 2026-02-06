@@ -37,7 +37,7 @@ router.use(express.static(path.resolve(__dirname,'public')))
         storage:storage,
     })
 
-router.get("/getSectionTemplateById/:id", Template.getSectionTemplateById);
+router.get("/getSectionTemplateById/:id", Template.getSectionTemplateById); // return filed config entire section in details
 
 router.post("/save", upload.any(), Template.saveDynamicTemplateData);
 router.get("/data/:celebId/:id", Template.getSectionDataBySectionId);
