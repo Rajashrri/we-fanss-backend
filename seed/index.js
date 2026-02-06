@@ -201,7 +201,7 @@ const seedStaticData = async () => {
 
 // Execute
 const run = async () => {
-  const DB_URI = "mongodb+srv://abhishekreactdev:Abhishek8928@cluster0.ap5am.mongodb.net/wefanss-prod-two";
+  const DB_URI = "mongodb://127.0.0.1:27017/wefanss-dev";
 
   try {
     console.log('📡 Connecting to database...');

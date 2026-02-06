@@ -1,6 +1,8 @@
 const Timeline = require("../models/timeline-model");
+const createError = require("http-errors");
 const fs = require("fs");
 const path = require("path");
+
 // Utility: Create clean URL from title
 function createCleanUrl(title) {
   let cleanTitle = title
@@ -23,12 +25,19 @@ const formatDateDMY = (date) => {
   return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
 };
 
-// Create new timeline
-const addtimeline = async (req, res) => {
+// ============================================
+// CREATE NEW TIMELINE
+// ============================================
+const addtimeline = async (req, res, next) => {
   try {
-    const { title, description, createdBy, from_year, to_year, celebrityId } =
-      req.body;
-    const url = createCleanUrl(req.body.title);
+    const { title, description, createdBy, from_year, to_year, celebrityId } = req.body;
+
+    // ✅ Validate required fields
+    if (!title || !celebrityId) {
+      throw createError(400, "Title and Celebrity ID are required");
+    }
+
+    const url = createCleanUrl(title);
 
     // Handle uploaded media file
     const mainImage = req.files?.["media"]
@@ -39,138 +48,196 @@ const addtimeline = async (req, res) => {
     const createdAt = formatDateDMY(now);
 
     const newTimeline = new Timeline({
-      title,
-      description,
+      title: title.trim(),
+      description: description?.trim(),
       media: mainImage,
-      status: 1, // default active
+      status: 1,
       createdAt,
       url,
       from_year,
       to_year,
-      celebrityId, // movie belongs to this celebrity
+      celebrityId,
       createdBy,
     });
 
     await newTimeline.save();
 
-    // ✅ Include success flag
-    return res.json({
+    return res.status(201).json({
       success: true,
-      msg: "Timeline added successfully",
+      message: "Timeline added successfully",
       data: newTimeline,
     });
+
   } catch (error) {
-    console.error("Add Timeline Error:", error);
-    return res.status(500).json({
-      success: false,
-      msg: "Server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-const updatetimeline = async (req, res) => {
+// ============================================
+// UPDATE TIMELINE
+// ============================================
+const updatetimeline = async (req, res, next) => {
   try {
     const { title, description, from_year, to_year } = req.body;
     const timelineId = req.params.id;
 
+    // ✅ Check if timeline exists
     const timeline = await Timeline.findById(timelineId);
     if (!timeline) {
-      return res.status(404).json({ msg: "Timeline not found" });
+      throw createError(404, "Timeline not found");
     }
 
-    // ✅ Update name
-    if (title) timeline.title = title;
-    if (description) timeline.description = description;
+    // ✅ Update fields
+    if (title) {
+      timeline.title = title.trim();
+      timeline.url = createCleanUrl(title);
+    }
+    if (description) timeline.description = description.trim();
     if (from_year) timeline.from_year = from_year;
     if (to_year) timeline.to_year = to_year;
 
     // ✅ Handle file upload
-    const newImageFile =
-      (req.files && req.files.media && req.files.media[0]) || req.file;
+    const newImageFile = (req.files && req.files.media && req.files.media[0]) || req.file;
 
     if (newImageFile) {
-      // delete old image if exists
+      // Delete old image if exists
       if (timeline.media) {
-        const oldPath = path.join(
-          __dirname,
-          "../public/timeline/",
-          timeline.media
-        );
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        const oldPath = path.join(__dirname, "../public/timeline/", timeline.media);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
       }
-
       timeline.media = newImageFile.filename;
     }
 
     await timeline.save();
 
-    res.status(200).json({ msg: "Timeline updated successfully", timeline });
+    return res.status(200).json({
+      success: true,
+      message: "Timeline updated successfully",
+      data: timeline
+    });
+
   } catch (error) {
-    console.error("Error updating Timeline:", error);
-    res.status(500).json({ msg: "Server error", error: error.message });
+    next(error);
   }
 };
 
-// Update status
-const updateStatus = async (req, res) => {
+// ============================================
+// UPDATE TIMELINE STATUS
+// ============================================
+const updateStatus = async (req, res, next) => {
   try {
     const { status, id } = req.body;
 
-    await Timeline.updateOne({ _id: id }, { $set: { status } }, { new: true });
+    // ✅ Validate required fields
+    if (!id) {
+      throw createError(400, "Timeline ID is required");
+    }
 
-    res.status(200).json({ msg: "Status updated successfully" });
-  } catch (error) {
-    res.status(500).json({ msg: "Server Error", error: error.message });
-  }
-};
+    if (status === undefined || status === null) {
+      throw createError(400, "Status is required");
+    }
 
-// Update timeline
+    // ✅ Check if timeline exists
+    const timeline = await Timeline.findById(id);
+    if (!timeline) {
+      throw createError(404, "Timeline not found");
+    }
 
-// Get all timelines
-const getdata = async (req, res) => {
-  try {
-     const { celebrityId } = req.params;
-    const response = await Timeline.find({ celebrityId });
+    timeline.status = status;
+    await timeline.save();
+
     return res.status(200).json({
       success: true,
-      data: response || []
+      message: "Timeline status updated successfully",
+      data: timeline
     });
 
-    res.status(200).json({ msg: response });
   } catch (error) {
-    res.status(500).json({ msg: "Server Error", error: error.message });
+    next(error);
   }
 };
 
-// Delete timeline
-const deletetimeline = async (req, res) => {
+// ============================================
+// GET ALL TIMELINES BY CELEBRITY
+// ============================================
+const getdata = async (req, res, next) => {
   try {
-    const id = req.params.id;
-    const response = await Timeline.findOneAndDelete({ _id: id });
+    const { celebrityId } = req.params;
 
-    if (!response) {
-      return res.status(404).json({ msg: "No data found" });
+    if (!celebrityId) {
+      throw createError(400, "Celebrity ID is required");
     }
 
-    res.status(200).json({ msg: "timeline deleted successfully" });
+    const timelines = await Timeline.find({ celebrityId })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Timelines retrieved successfully",
+      data: timelines
+    });
+
   } catch (error) {
-    res.status(500).json({ msg: "Server Error", error: error.message });
+    next(error);
   }
 };
 
-// Get timeline by ID
-const gettimelineByid = async (req, res) => {
+// ============================================
+// GET TIMELINE BY ID
+// ============================================
+const gettimelineByid = async (req, res, next) => {
   try {
-    const timeline = await Timeline.findOne({ _id: req.params.id });
+    const { id } = req.params;
+
+    const timeline = await Timeline.findById(id);
 
     if (!timeline) {
-      return res.status(404).json({ msg: "No data found" });
+      throw createError(404, "Timeline not found");
     }
 
-    res.status(200).json({ msg: timeline });
+    return res.status(200).json({
+      success: true,
+      message: "Timeline retrieved successfully",
+      data: timeline
+    });
+
   } catch (error) {
-    res.status(500).json({ msg: "Server Error", error: error.message });
+    next(error);
+  }
+};
+
+// ============================================
+// DELETE TIMELINE
+// ============================================
+const deletetimeline = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const timeline = await Timeline.findById(id);
+    if (!timeline) {
+      throw createError(404, "Timeline not found");
+    }
+
+    // ✅ Delete associated media file
+    if (timeline.media) {
+      const mediaPath = path.join(__dirname, "../public/timeline/", timeline.media);
+      if (fs.existsSync(mediaPath)) {
+        fs.unlinkSync(mediaPath);
+      }
+    }
+
+    await Timeline.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Timeline deleted successfully",
+      data: { id }
+    });
+
+  } catch (error) {
+    next(error);
   }
 };
 

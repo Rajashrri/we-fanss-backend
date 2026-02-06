@@ -97,6 +97,7 @@ const getSectionDataBySectionId = async (req, res) => {
     return res.status(200).json({
       success: true,
       sectionName: section.name,
+      isRepeater:section.isRepeater,
       fields: section.fieldsConfig,
       data,
     });

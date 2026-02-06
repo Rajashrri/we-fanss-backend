@@ -19,7 +19,6 @@ const customoptionchema = new Schema(
     description: { 
       type: String, 
       trim: true,
-      maxlength: [1000, 'Description cannot exceed 1000 characters']
     },
     status: { 
       type: Number, 

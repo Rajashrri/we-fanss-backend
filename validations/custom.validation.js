@@ -16,7 +16,6 @@ const createCustomOptionSchema = z.object({
     description: z
       .string()
       .trim()
-      .max(1000, "Description cannot exceed 1000 characters")
       .optional(),
     
     celebrity: z

@@ -119,7 +119,7 @@ app.use('/api/references', require('./router/references-router'));
 app.use('/api/related-personalities', require('./router/relatedpersonality-routes'));
 
 app.use('/api/custom-sections' , require('./router/customoption-router'))
-app.use('/api/option', require('./router/options-router'));
+app.use('/api/options', require('./router/options-router'));
 
 
 app.use("/api/celebrity-sections", require("./router/celebratysection-router"));
