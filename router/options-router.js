@@ -38,4 +38,20 @@ router.post('/social-links', optionsController.getSocialLinkOptions);
  */
 router.post('/trivia-types', optionsController.getTriviaTypeOptions);
 
+/**
+ * @route   POST /api/options/professions
+ * @desc    Get profession options (id and label)
+ * @access  Private
+ * @body    { excludeList?: string[] }
+ */
+router.post('/professions', optionsController.getProfessionOptions);
+
+/**
+ * @route   POST /api/options/genres
+ * @desc    Get genre master options (id and label)
+ * @access  Private
+ * @body    { excludeList?: string[] }
+ */
+router.post('/genres', optionsController.getGenreOptions);
+
 module.exports = router;

@@ -29,8 +29,12 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
+const authenticate = require("../middlewares/auth-middleware");
+
 
 const upload = multer({ storage });
+
+router.use(authenticate)
 
 // Routes
 router.post(

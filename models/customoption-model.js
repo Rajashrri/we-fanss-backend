@@ -1,7 +1,8 @@
-// models/client-model.js
+// models/customoption-model.js
 const { Schema, model } = require("mongoose");
+const { moderationFields } = require("../models/schema/moderation-schema");
 
-const customoptionchema = new Schema(
+const customoptionSchema = new Schema(
   {
     title: { 
       type: String, 
@@ -49,9 +50,13 @@ const customoptionchema = new Schema(
     celebrity: { 
       type: Schema.Types.ObjectId, 
       ref: 'Celebrity'
-    }
+    },
+
+    
+    ...moderationFields
+
   },
   { timestamps: true }
 );
 
-module.exports = model('customoption', customoptionchema);
+module.exports = model('customoption', customoptionSchema);

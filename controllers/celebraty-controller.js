@@ -136,7 +136,7 @@ const addcelebraty = async (req, res, next) => {
     const {
       identityProfile,
       personalDetails,
-      lifeStatus,  // ✅ ADDED: Death/Life status fields
+      lifeStatus,
       familyRelationships,
       professionalIdentity,
       locationPresence,
@@ -177,7 +177,6 @@ const addcelebraty = async (req, res, next) => {
       throw createHttpError(409, "Slug already exists");
     }
 
-    // Check old slugHistory for conflicts
     const existingInHistory = await Celebraty.findOne({
       "identityProfile.slugHistory.slug": finalSlug,
     });
@@ -247,7 +246,7 @@ const addcelebraty = async (req, res, next) => {
       );
     }
 
-    // ==================== VALIDATE PRIMARY LANGUAGE (if provided) ====================
+    // ==================== VALIDATE PRIMARY LANGUAGE ====================
     if (
       professionalIdentity?.primaryLanguage &&
       parseLanguages.length > 0 &&
@@ -259,8 +258,7 @@ const addcelebraty = async (req, res, next) => {
       );
     }
 
-    // ✅ ==================== VALIDATE LIFE STATUS ====================
-    // Convert string 'true'/'false' to boolean if needed
+    // ==================== VALIDATE LIFE STATUS ====================
     const isAlive = lifeStatus?.isAlive === 'true' || lifeStatus?.isAlive === true;
     
     console.log("=== Life Status Debug (Backend) ===");
@@ -271,7 +269,6 @@ const addcelebraty = async (req, res, next) => {
     console.log("causeOfDeath:", lifeStatus?.causeOfDeath);
     console.log("===================================");
 
-    // Validate death date is not in future
     if (!isAlive && lifeStatus?.dateOfDeath) {
       const deathDate = new Date(lifeStatus.dateOfDeath);
       const today = new Date();
@@ -279,7 +276,6 @@ const addcelebraty = async (req, res, next) => {
         throw createHttpError(400, "Date of death cannot be in the future");
       }
 
-      // Validate death date is after birth date
       if (personalDetails?.dob) {
         const birthDate = new Date(personalDetails.dob);
         if (deathDate < birthDate) {
@@ -294,8 +290,8 @@ const addcelebraty = async (req, res, next) => {
       identityProfile: {
         name: identityProfile.name,
         slug: finalSlug,
-        slugHistory: [], // Will be populated on slug changes
-        image: null, // Will be updated after file processing
+        slugHistory: [],
+        image: null,
         gallery: parseGallery,
         shortinfo: identityProfile.shortinfo || "",
         biography: identityProfile.biography || "",
@@ -313,7 +309,7 @@ const addcelebraty = async (req, res, next) => {
           }
         : {},
 
-      // ✅ C) Life Status (NEW - Death/Alive status)
+      // C) Life Status
       lifeStatus: {
         isAlive: isAlive,
         dateOfDeath: !isAlive && lifeStatus?.dateOfDeath ? lifeStatus.dateOfDeath : null,
@@ -393,10 +389,16 @@ const addcelebraty = async (req, res, next) => {
         publishedAt: identityProfile.status === "Published" ? new Date() : null,
       },
 
-      // L) Root level status (Active/Inactive)
+      // ✅ L) Moderation State (NEW - Default PENDING)
+      moderationState: "PENDING",
+      moderatedBy: null,
+      moderatedAt: null,
+      moderationRemark: null,
+
+      // M) Root level status (Active/Inactive)
       status: 1,
 
-      // M) Analytics & Engagement
+      // N) Analytics & Engagement
       analyticsEngagement: {
         viewCount: 0,
         followerCount: 0,
@@ -405,24 +407,23 @@ const addcelebraty = async (req, res, next) => {
         searchBoostScore: 0,
       },
 
-      // N) Profile Quality
+      // O) Profile Quality
       profileQuality: {
-        profileCompletionPercentage: 0, // Calculate later if needed
+        profileCompletionPercentage: 0,
       },
     });
 
     const celebId = newCelebraty._id.toString();
     console.log("✅ Celebrity created with ID:", celebId);
     console.log("✅ Life Status saved:", newCelebraty.lifeStatus);
+    console.log("✅ Moderation State:", newCelebraty.moderationState);
 
     // ==================== FILES PROCESS ====================
-    // ✅ Centralized helper — move + rename + paths return karta hai
     const { imagePath, galleryPaths } = processCelebrityFiles(req.files, celebId);
 
     console.log("Image Path:", imagePath);
     console.log("Gallery Paths:", galleryPaths);
 
-    // ✅ DB mein paths update karo
     if (imagePath || galleryPaths.length > 0) {
       const imageUpdate = {};
       if (imagePath) imageUpdate["identityProfile.image"] = imagePath;
@@ -449,7 +450,7 @@ const addcelebraty = async (req, res, next) => {
 
       return res.status(201).json({
         success: true,
-        message: "Celebrity created successfully",
+        message: "Celebrity created successfully and sent for review",
         data: finalCelebrity,
       });
     }
@@ -516,7 +517,7 @@ const addcelebraty = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: "Celebrity created successfully",
+      message: "Celebrity created successfully and sent for review",
       data: finalCelebrity,
     });
   } catch (error) {
@@ -529,61 +530,85 @@ const addcelebraty = async (req, res, next) => {
 
 
 
-
-/**
- * Get all celebrities with pagination and filters - MINIMAL DATA FOR LISTING
- */
-/**
- * Get all celebrities with pagination and filters - MINIMAL DATA FOR LISTING
- */
 const getdata = async (req, res, next) => {
   try {
-    const { page, limit, search, status } = req.query;
+    const { page, limit, search, status, moderationState } = req.query;
+
+    console.log("🔍 Query Params:", { status, moderationState, search }); // ✅ ADD THIS
 
     let query = {};
+
+    // ✅ ADMIN PANEL: Show ALL moderation states by default
+    if (moderationState && moderationState !== "ALL") {
+      query.moderationState = moderationState;
+    }
 
     // Search filter
     if (search) {
       query["identityProfile.name"] = { $regex: search, $options: "i" };
     }
 
-    // Root level status filter (Active/Inactive)
-    if (status) {
-      query["status"] = status;
-    }
+    // Root level status filter (Active/Inactive) - if explicitly provided
+   if (status !== undefined && status !== null && status !== "" && status !== "ALL") {
+  query.status = Number(status);
+}
+
+
+    console.log("🔍 Final Query:", query); // ✅ ADD THIS TO SEE ACTUAL QUERY
 
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
 
-    // ✅ Fetch minimal fields including professions
+    // ✅ Fetch minimal fields including moderation fields
     const celebrities = await Celebraty.find(query)
       .select({
         "identityProfile.name": 1,
-        "status": 1,
+        "identityProfile.image": 1,
+        "status": 1, // ✅ Make sure this is root level status
+        "moderationState": 1,
+        "moderatedBy": 1,
+        "moderatedAt": 1,
+        "moderationRemark": 1,
         "professionalIdentity.sections": 1,
-        "professionalIdentity.professions": 1, // ✅ ADD professions
+        "professionalIdentity.professions": 1,
         _id: 1,
         createdAt: 1,
+        updatedAt: 1,
       })
       .populate("professionalIdentity.sections", "name")
-      .populate("professionalIdentity.professions", "name _id") // ✅ POPULATE professions
+      .populate("professionalIdentity.professions", "name _id")
+      .populate("moderatedBy", "name email")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
       .lean();
 
+    console.log("🔍 Found Celebrities:", celebrities.length); // ✅ ADD THIS
+    console.log("🔍 First Celebrity Status:", celebrities[0]?.status); // ✅ ADD THIS
+
     const total = await Celebraty.countDocuments(query);
 
-    // ✅ Format response with professions
+    // ✅ Format response with moderation data
     const formattedData = celebrities.map(celeb => ({
       _id: celeb._id,
       name: celeb.identityProfile?.name || "N/A",
-      status: celeb.status || "Active",
+      image: celeb.identityProfile?.image || null,
+      status: celeb.status !== undefined ? celeb.status : 1, // ✅ EXPLICIT CHECK
+      moderationState: celeb.moderationState || "PENDING",
+      moderatedBy: celeb.moderatedBy || null,
+      moderatedAt: celeb.moderatedAt || null,
+      moderationRemark: celeb.moderationRemark || null,
       sections: celeb.professionalIdentity?.sections || [],
-      professions: celeb.professionalIdentity?.professions || [], // ✅ ADD professions
+      professions: celeb.professionalIdentity?.professions || [],
       createdAt: celeb.createdAt,
+      updatedAt: celeb.updatedAt,
     }));
+
+    // ✅ Count by moderation state for dashboard stats
+    const pendingCount = await Celebraty.countDocuments({ ...query, moderationState: "PENDING" });
+    const publishedCount = await Celebraty.countDocuments({ ...query, moderationState: "PUBLISHED" });
+    const rejectedCount = await Celebraty.countDocuments({ ...query, moderationState: "REJECTED" });
 
     return res.status(200).json({
       success: true,
@@ -594,6 +619,11 @@ const getdata = async (req, res, next) => {
         page: pageNum,
         limit: limitNum,
         totalPages: Math.ceil(total / limitNum),
+        moderationStats: {
+          pending: pendingCount,
+          published: publishedCount,
+          rejected: rejectedCount,
+        },
       },
     });
   } catch (error) {
@@ -975,11 +1005,24 @@ const updatecelebraty = async (req, res, next) => {
     }
 
     // K) Root level status
+    // K) Root level status
     if (status !== undefined) updateFields["status"] = status;
 
     // L) Update audit trail
     updateFields["auditTrail.updatedBy"] = req.user?.userId;
 
+    // ✅ M) RESET MODERATION STATE TO PENDING (Content Moderation Flow)
+    // When celebrity is updated, it goes back to review queue
+    updateFields["moderationState"] = "PENDING";
+    updateFields["moderatedBy"] = null;
+    updateFields["moderatedAt"] = null;
+    updateFields["moderationRemark"] = null;
+    updateFields["auditTrail.approvedBy"] = null;
+    updateFields["auditTrail.publishedAt"] = null;
+
+    console.log("🔄 Moderation state reset to PENDING after update");
+
+   
     // ==================== UPDATE CELEBRITY ====================
     const updateOperation = { $set: updateFields };
     

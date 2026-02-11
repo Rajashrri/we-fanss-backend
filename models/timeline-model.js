@@ -1,17 +1,50 @@
-// models/client-model.js
+// models/timeline-model.js
 const { Schema, model } = require("mongoose");
+const { moderationFields } = require("../models/schema/moderation-schema");
 
-const timelinechema = new Schema({
-  title: { type: String, required: true },
-  url: { type: String },
-   description: { type: String },
-  status: { type: String },
-  createdAt: { type: String },
-      createdBy :{ type: String},
-    media: { type: String },
-  from_year: { type: String },
-   to_year: { type: String },
-celebrityId: { type: String }, // movie title
+const timelineSchema = new Schema({
+  title: { 
+    type: String, 
+    required: true 
+  },
+  slug: { 
+    type: String 
+  },
+  description: { 
+    type: String 
+  },
+  status: { 
+    type: Number, 
+    default: 1,    
+    enum: [0, 1]  
+  },
+  createdAt: { 
+    type: String   
+  },
+  createdBy: { 
+    type: Schema.Types.ObjectId,  
+    ref: "User"      
+  },             
+  media: { 
+    type: String 
+  },
+  fromYear: {     
+    type: String 
+  },
+  toYear: {      
+    type: String 
+  },
+  celebrity: {  
+    type: Schema.Types.ObjectId, 
+    ref: "Celebrity",
+    required: true 
+  },
+
+ 
+  ...moderationFields
+
+}, {
+  timestamps: true 
 });
 
-module.exports = model('timeline', timelinechema); // ✅ default export
+module.exports = model('Timeline', timelineSchema);

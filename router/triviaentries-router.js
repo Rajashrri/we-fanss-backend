@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Triviaentries = require("../controllers/triviaentries-controller");
+const authenticate = require("../middlewares/auth-middleware");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
@@ -8,17 +9,26 @@ const path = require("path");
 // ✅ Multer setup for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join("public", "triviaentries");
-    if (!fs.existsSync("public")) fs.mkdirSync("public");
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+    const uploadDir = path.resolve("public/triviaentries");
+    
+    if (!fs.existsSync(path.resolve("public"))) {
+      fs.mkdirSync(path.resolve("public"), { recursive: true });
+    }
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
+    cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
 
 const upload = multer({ storage });
+
+// ✅ Apply authentication middleware
+router.use(authenticate);
 
 // ✅ Routes
 
@@ -29,8 +39,8 @@ router.post(
   Triviaentries.addtriviaentries
 );
 
-// Get all Trivia Entries
-router.get("/getdatatriviaentries/:celebrityId", Triviaentries.getdatatriviaentries);
+// Get all Trivia Entries by celebrity
+router.get("/getdatatriviaentries/:celebrity", Triviaentries.getdatatriviaentries);
 
 // Get Trivia Entry by ID
 router.get("/gettriviaentriesByid/:id", Triviaentries.gettriviaentriesByid);
@@ -48,7 +58,6 @@ router.patch("/update-statustriviaentries", Triviaentries.updateStatustriviaentr
 // Delete Trivia Entry
 router.delete("/deletetriviaentries/:id", Triviaentries.deletetriviaentries);
 
-// Get category dropdown
-router.get("/categoryOptions", Triviaentries.categoryOptions);
+
 
 module.exports = router;

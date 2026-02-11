@@ -4,6 +4,7 @@ const { z } = require("zod");
    OPERATIONS OBJECT
 =============================== */
 const operationsSchema = z.object({
+  view: z.boolean().optional(),    // ✅ Added VIEW operation
   add: z.boolean().optional(),
   edit: z.boolean().optional(),
   delete: z.boolean().optional(),

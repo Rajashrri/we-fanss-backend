@@ -3,6 +3,8 @@ const { Celebraty: Celebrity } = require('../models/celebraty-model');
 const { Language } = require('../models/language-model');
 const { SocialLink } = require('../models/sociallink-model');
 const { TriviaTypes } = require('../models/triviatypes-model');
+const Professionalmaster = require('../models/professionalmaster-model');
+const { GenreMaster } = require('../models/genremaster-model');
 
 /**
  * Get celebrity options (id and label)
@@ -156,9 +158,87 @@ const getTriviaTypeOptions = async (req, res, next) => {
   }
 };
 
+/**
+ * Get profession options (id and label)
+ * @route POST /api/options/professions
+ * @body excludeList - array of profession IDs to exclude (OPTIONAL)
+ */
+const getProfessionOptions = async (req, res, next) => {
+  try {
+    const { excludeList } = req.body;
+
+    // Build filter - only active professions
+    const filter = { status: 1 };
+
+    // Add exclude filter ONLY if excludeList is provided and is a valid array
+    if (excludeList && Array.isArray(excludeList) && excludeList.length > 0) {
+      filter._id = { $nin: excludeList };
+    }
+
+    const professions = await Professionalmaster.find(filter)
+      .select('_id name')
+      .sort({ name: 1 })
+      .lean();
+
+    // Format response
+    const options = professions.map(profession => ({
+      id: profession._id,
+      label: profession.name,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profession options retrieved successfully',
+      data: options,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get genre master options (id and label)
+ * @route POST /api/options/genres
+ * @body excludeList - array of genre IDs to exclude (OPTIONAL)
+ */
+const getGenreOptions = async (req, res, next) => {
+  try {
+    const { excludeList } = req.body;
+
+    // Build filter - only active genres
+    const filter = { status: 1 };
+
+    // Add exclude filter ONLY if excludeList is provided and is a valid array
+    if (excludeList && Array.isArray(excludeList) && excludeList.length > 0) {
+      filter._id = { $nin: excludeList };
+    }
+
+    const genres = await GenreMaster.find(filter)
+      .select('_id name')
+      .sort({ name: 1 })
+      .lean();
+
+    // Format response
+    const options = genres.map(genre => ({
+      id: genre._id,
+      label: genre.name,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message: 'Genre options retrieved successfully',
+      data: options,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCelebrityOptions,
   getLanguageOptions,
   getSocialLinkOptions,
   getTriviaTypeOptions,
+  getProfessionOptions,
+  getGenreOptions,
 };

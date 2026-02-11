@@ -3,14 +3,16 @@ const Privilege = require("../models/previlege-model");
 const { STATIC_ROLES } = require("../config/role-config");
 
 /**
- * ✅ Middleware: Check if user has permission for specific resource and operation
- * Usage: checkPrivilege(RESOURCES.CELEBRITY, OPERATIONS.ADD)
+ * ✅ Middleware: Check if user has permission for specific resource and operation(s)
+ * Usage: 
+ * - Single operation: checkPrivilege(RESOURCES.CELEBRITY, OPERATIONS.ADD)
+ * - Multiple operations (ANY): checkPrivilege(RESOURCES.CELEBRITY, [OPERATIONS.VIEW, OPERATIONS.ADD])
+ * 
+ * @param {string} resource - Resource name from PRIVILEGE_RESOURCES
+ * @param {string|string[]} operation - Single operation or array of operations (grants access if user has ANY)
  */
 const checkPrivilege = (resource, operation) => {
-
-
   return async (req, res, next) => {
-
     console.log("⚙️ checkPrivilege args:", { resource, operation });
 
     try {
@@ -56,7 +58,7 @@ const checkPrivilege = (resource, operation) => {
       // ✅ Check if operation is allowed
       const operations = permission.operations;
       
-      // 🔥 IMPROVED: More defensive checks
+      // 🔥 Defensive check
       if (!operations || typeof operations !== 'object') {
         return res.status(403).json({
           success: false,
@@ -64,16 +66,43 @@ const checkPrivilege = (resource, operation) => {
         });
       }
 
-      // 🔥 IMPROVED: Explicit true check
-      if (operations[operation] !== true) {
-        // Get list of enabled operations for better error message
-        const enabledOps = Object.entries(operations)
-          .filter(([_, enabled]) => enabled === true)
-          .map(([op, _]) => op);
+      // ✅ Handle single operation (string)
+      if (typeof operation === 'string') {
+        if (operations[operation] !== true) {
+          // Get list of enabled operations for better error message
+          const enabledOps = Object.entries(operations)
+            .filter(([_, enabled]) => enabled === true)
+            .map(([op, _]) => op);
+          
+          return res.status(403).json({
+            success: false,
+            message: `You don't have permission to ${operation} ${resource}. Available operations: ${enabledOps.join(', ') || 'none'}`
+          });
+        }
+      } 
+      // ✅ Handle multiple operations (array) - user needs ANY one of them
+      else if (Array.isArray(operation)) {
+        const hasAnyPermission = operation.some(op => operations[op] === true);
         
-        return res.status(403).json({
+        if (!hasAnyPermission) {
+          // Get list of enabled operations
+          const enabledOps = Object.entries(operations)
+            .filter(([_, enabled]) => enabled === true)
+            .map(([op, _]) => op);
+          
+          return res.status(403).json({
+            success: false,
+            message: `You don't have permission to perform any of [${operation.join(', ')}] on ${resource}. Available operations: ${enabledOps.join(', ') || 'none'}`
+          });
+        }
+
+        console.log("✅ Permission granted (has at least one required operation)");
+      }
+      // ❌ Invalid operation type
+      else {
+        return res.status(500).json({
           success: false,
-          message: `You don't have permission to ${operation} ${resource}. Available operations: ${enabledOps.join(', ') || 'none'}`
+          message: "Invalid operation parameter - must be string or array"
         });
       }
 

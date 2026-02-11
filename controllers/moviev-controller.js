@@ -1,69 +1,15 @@
-const { Moviev } = require("../models/moviev-model");
-const { Language } = require("../models/language-model");
-const { GenreMaster } = require("../models/genremaster-model");
-const createError = require("http-errors");
-function createCleanUrl(title) {
-  // Convert the title to lowercase
-  let cleanTitle = title.toLowerCase();
-  // Remove special characters, replace spaces with dashes
-  cleanTitle = cleanTitle.replace(/[^\w\s-]/g, "");
-  cleanTitle = cleanTitle.replace(/\s+/g, "-");
+const { Movie } = require("../models/moviev-model");
+const createHttpError = require("http-errors");
+const generateSlug = require("../utils/helper/slugHelper");
 
-  return cleanTitle;
-}
-
-// ✅ Get category dropdown options
-const GenreMasterOptions = async (req, res) => {
-  try {
-    const categories = await GenreMaster.find({ status: 1 });
-    if (!categories.length)
-      return res.status(404).json({ msg: "No categories found" });
-    res.status(200).json({ msg: categories });
-  } catch (error) {
-    console.error("Category Fetch Error:", error);
-    res.status(500).json({ msg: "Server error" });
-  }
-};
-
-//add project
-const languageOptions = async (req, res) => {
-  try {
-    const item = await Language.find({ status: 1 }).sort({ name: 1 });
-    if (!item) {
-      res.status(404).json({ msg: "No Data Found" });
-      return;
-    }
-
-    res.status(200).json({
-      msg: item,
-    });
-  } catch (error) {
-    console.log(`Language ${error}`);
-  }
-};
-
-const formatDateDMY = (date) => {
-  const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-  const seconds = String(d.getSeconds()).padStart(2, "0");
-
-  return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
-};
-
-
-
-const addMoviev = async (req, res, next) => {
+const addMovie = async (req, res, next) => {
   try {
     const {
       title,
-      release_year,
-      release_date,
+      releaseYear,
+      releaseDate,
       role,
-      role_type,
+      roleType,
       languages,
       director,
       producer,
@@ -71,28 +17,37 @@ const addMoviev = async (req, res, next) => {
       genre,
       notes,
       rating,
-      platform_rating,
-      celebrityId,
-      createdBy,
+      platformRating,
+      celebrity,
       watchLinks,
       awards,
       sort,
-      statusnew,
+      statusNew,
     } = req.body;
 
-    // ✅ Image handling
+    const createdBy = req.user?.userId || req.body.createdBy;
+
+    // ✅ Fixed: Remove /movies/ prefix
     const profileImage = req.files?.image?.[0]?.filename || null;
     const galleryImages = req.files?.gallery
       ? req.files.gallery.map((file) => file.filename)
       : [];
 
-    // ✅ Duplicate title check
-    const existingMoviev = await Moviev.findOne({ title });
-    if (existingMoviev) {
-      throw createError(400, "Movie already exists with this title");
+    const slug = generateSlug({ name: title });
+
+    const existingMovie = await Movie.findOne({
+      title: { $regex: new RegExp(`^${title}$`, "i") },
+    });
+
+    if (existingMovie) {
+      throw createHttpError(400, "Movie already exists with this title");
     }
 
-    // ✅ Safe JSON parsing helper
+    const existingSlug = await Movie.findOne({ slug });
+    if (existingSlug) {
+      throw createHttpError(409, "Slug already exists");
+    }
+
     const safeParse = (field) => {
       try {
         return field ? JSON.parse(field) : [];
@@ -105,13 +60,13 @@ const addMoviev = async (req, res, next) => {
     const parsedGenre = safeParse(genre);
     const parsedWatchLinks = safeParse(watchLinks);
 
-    // ✅ Create Movie
-    const moviev = await Moviev.create({
+    const movie = await Movie.create({
       title,
-      release_year,
-      release_date,
+      slug,
+      releaseYear,
+      releaseDate,
       role,
-      role_type,
+      roleType,
       languages: parsedLanguages,
       genre: parsedGenre,
       watchLinks: parsedWatchLinks,
@@ -120,84 +75,175 @@ const addMoviev = async (req, res, next) => {
       cast,
       notes,
       rating,
-      platform_rating,
-      celebrityId,
-      image: profileImage,
-      gallery: galleryImages,
+      platformRating,
+      celebrity,
+      image: profileImage, // ✅ Fixed
+      gallery: galleryImages, // ✅ Fixed
       createdBy,
       status: 1,
+      moderationState: "PENDING", // ✅ Added default moderation state
       awards,
       sort,
-      statusnew,
+      statusNew,
     });
 
     return res.status(201).json({
       success: true,
-      message: "Movie added successfully",
-      data: { moviev },
+      message: "Movie added successfully and sent for review",
+      data: movie,
     });
   } catch (error) {
-    next(error); // handled by global error middleware
+    next(error);
   }
 };
 
-module.exports = { addMoviev };
-
-
-//update status
-
-const updateStatus = async (req, res) => {
+const getMovies = async (req, res, next) => {
   try {
-    const { status, id } = req.body;
+    const { page, limit, search, celebrity, moderationState } = req.query;
 
-    const result = await Moviev.updateOne(
-      { _id: id },
-      {
-        $set: {
-          status: status,
-        },
+    let query = { status: 1 }; // ✅ Added status check
+
+    // ✅ By default, only return PUBLISHED movies
+    query.moderationState = moderationState || "PUBLISHED";
+
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+
+    if (celebrity) {
+      query.celebrity = celebrity;
+    }
+
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const movies = await Movie.find(query)
+      .populate("languages", "name")
+      .populate("genre", "name")
+      .populate("celebrity", "name")
+      .populate("createdBy", "name email")
+      .populate("moderatedBy", "name email") // ✅ Fixed field name
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Movie.countDocuments(query);
+
+    return res.status(200).json({
+      success: true,
+      message: "Movies retrieved successfully",
+      data: movies,
+      meta: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
       },
-      {
-        new: true,
-      }
-    );
-    res.status(201).json({
-      msg: "Updated Successfully",
     });
   } catch (error) {
-    res.status(500).json(error);
+    next(error);
   }
 };
 
-const updatemoviev = async (req, res) => {
+const getMoviesByCelebrity = async (req, res, next) => {
   try {
-    const id = req.params.id;
+    const { celebrity } = req.params;
+
+    const movies = await Movie.find({
+      celebrity,
+      status: 1,
+      moderationState: "PUBLISHED",
+    })
+      .populate("languages", "name")
+      .populate("genre", "name")
+      .select("-createdBy -moderatedBy") // ✅ Fixed field name
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Movies retrieved successfully",
+      data: movies,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMovieById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const movie = await Movie.findById(id)
+      .populate("languages", "name")
+      .populate("genre", "name")
+      .populate("celebrity", "name")
+      .populate("createdBy", "name email")
+      .populate("moderatedBy", "name email"); // ✅ Fixed field name
+
+    if (!movie) {
+      throw createHttpError(404, "Movie not found");
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Movie retrieved successfully",
+      data: movie,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateMovie = async (req, res, next) => {
+  try {
+    const { id } = req.params;
     const {
       title,
-      release_year,
-      release_date,
+      releaseYear,
+      releaseDate,
       role,
-      role_type,
+      roleType,
       languages,
       director,
       producer,
       cast,
       notes,
       rating,
-      platform_rating,
+      platformRating,
       old_image,
+      old_gallery, // ✅ Added for gallery
       watchLinks,
       awards,
       genre,
       sort,
-      statusnew,
+      statusNew,
     } = req.body;
 
-    const profileImage = req.files?.image?.[0]
-      ? req.files.image[0].filename
+    const existingMovie = await Movie.findById(id);
+    if (!existingMovie) {
+      throw createHttpError(404, "Movie not found");
+    }
+
+    if (title && title !== existingMovie.title) {
+      const duplicate = await Movie.findOne({
+        title: { $regex: new RegExp(`^${title}$`, "i") },
+        _id: { $ne: id },
+      });
+
+      if (duplicate) {
+        throw createHttpError(400, "Movie already exists with this title");
+      }
+    }
+
+    // ✅ Image handling
+    const profileImage = req.files?.image?.[0]?.filename || null;
+    
+    // ✅ Gallery handling
+    const galleryImages = req.files?.gallery
+      ? req.files.gallery.map((file) => file.filename)
       : null;
 
-    // ✅ Parse languages safely
     let parsedLanguages = [];
     try {
       if (typeof languages === "string") parsedLanguages = JSON.parse(languages);
@@ -206,7 +252,6 @@ const updatemoviev = async (req, res) => {
       parsedLanguages = [];
     }
 
-    // ✅ Parse genre safely
     let parsedGenre = [];
     try {
       if (typeof genre === "string") parsedGenre = JSON.parse(genre);
@@ -215,31 +260,58 @@ const updatemoviev = async (req, res) => {
       parsedGenre = [];
     }
 
-    // ✅ Parse watchLinks safely
     let parsedWatchLinks = [];
     try {
       if (typeof watchLinks === "string") {
         if (watchLinks.trim().startsWith("[") && watchLinks.trim().endsWith("]")) {
           parsedWatchLinks = JSON.parse(watchLinks);
         }
-      } else if (Array.isArray(watchLinks)) parsedWatchLinks = watchLinks;
-      else if (watchLinks && typeof watchLinks === "object") parsedWatchLinks = [watchLinks];
+      } else if (Array.isArray(watchLinks)) {
+        parsedWatchLinks = watchLinks;
+      } else if (watchLinks && typeof watchLinks === "object") {
+        parsedWatchLinks = [watchLinks];
+      }
     } catch (err) {
-      console.error("Invalid watchLinks JSON:", err);
       parsedWatchLinks = [];
     }
 
-    // ✅ Sanitize watchLinks
     parsedWatchLinks = parsedWatchLinks.filter(
       (wl) => wl && typeof wl === "object" && !Array.isArray(wl)
     );
 
+    // ✅ Gallery parsing
+    let parsedOldGallery = [];
+    try {
+      if (typeof old_gallery === "string") {
+        parsedOldGallery = JSON.parse(old_gallery);
+      } else if (Array.isArray(old_gallery)) {
+        parsedOldGallery = old_gallery;
+      }
+    } catch {
+      parsedOldGallery = [];
+    }
+
+    let slug = existingMovie.slug;
+    if (title && title !== existingMovie.title) {
+      slug = generateSlug({ name: title });
+
+      const slugConflict = await Movie.findOne({
+        slug: slug,
+        _id: { $ne: id },
+      });
+
+      if (slugConflict) {
+        throw createHttpError(409, "Generated slug already exists");
+      }
+    }
+
     const updateData = {
       title,
-      release_year,
-      release_date,
+      slug,
+      releaseYear,
+      releaseDate,
       role,
-      role_type,
+      roleType,
       languages: parsedLanguages,
       director,
       producer,
@@ -247,112 +319,96 @@ const updatemoviev = async (req, res) => {
       notes,
       genre: parsedGenre,
       rating,
-      platform_rating,
+      platformRating,
       awards,
       sort,
-      statusnew,
+      statusNew,
       watchLinks: parsedWatchLinks,
-      updatedAt: new Date(),
     };
 
-    if (profileImage) updateData.image = profileImage;
-    else if (old_image) updateData.image = old_image;
-
-    const result = await Moviev.findByIdAndUpdate(id, { $set: updateData }, { new: true });
-
-    if (!result) {
-      return res.status(404).json({
-        success: false,
-        message: "Movie not found",
-        data: null,
-      });
+    // ✅ Image update logic
+    if (profileImage) {
+      updateData.image = profileImage;
+    } else if (old_image) {
+      updateData.image = old_image;
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Movie updated successfully",
-      data: result,
-    });
-  } catch (error) {
-    console.error("Update Moviev Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error,
-      data: null,
-    });
-  }
-};
-
-
-//get table data
-
-const getMoviesByCelebrity = async (req, res) => {
-  try {
-    const { celebrityId } = req.params;
-    const movies = await Moviev.find({ celebrityId });
-    res.json({ status: true, msg: movies });
-  } catch (error) {
-    console.error("Get Movies Error:", error);
-    res.status(500).json({ status: false, msg: "Internal Server Error" });
-  }
-};
-
-//delete
-
-const deletemoviev = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const response = await Moviev.findOneAndDelete({ _id: id });
-
-    if (!response) {
-      return res.status(404).json({
-        status: false,
-        msg: "No Data Found",
-      });
+    // ✅ Gallery update logic
+    if (galleryImages && galleryImages.length > 0) {
+      updateData.gallery = [...parsedOldGallery, ...galleryImages];
+    } else if (parsedOldGallery.length > 0) {
+      updateData.gallery = parsedOldGallery;
     }
+
+    const updatedMovie = await Movie.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
 
     return res.status(200).json({
-      status: true,
-      msg: "Celebrity deleted successfully",
-      data: response,
+      success: true,
+      message: "Movie updated successfully",
+      data: updatedMovie,
     });
   } catch (error) {
-    console.error("Delete Moviev error:", error);
-    res.status(500).json({
-      status: false,
-      msg: "Internal Server Error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-//for edit
-
-// backend: controller
-const getmovievByid = async (req, res) => {
+const updateStatus = async (req, res, next) => {
   try {
-    const project = await Moviev.findOne({ _id: req.params.id });
+    const { id, status } = req.body;
 
-    if (!project) {
-      return res.status(404).json({ msg: "No Data Found" });
+    const existingMovie = await Movie.findById(id);
+    if (!existingMovie) {
+      throw createHttpError(404, "Movie not found");
     }
 
-    res.status(200).json({ msg: project }); // msg is an object
+    const updatedMovie = await Movie.findByIdAndUpdate(
+      id,
+      { $set: { status } },
+      { new: true, runValidators: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Status updated successfully",
+      data: updatedMovie,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ msg: "Internal Server Error", error: error.message });
+    next(error);
+  }
+};
+
+const deleteMovie = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const movie = await Movie.findById(id);
+    if (!movie) {
+      throw createHttpError(404, "Movie not found");
+    }
+
+    // ✅ Soft delete
+    await Movie.findByIdAndUpdate(id, { status: 0 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Movie deleted successfully",
+      data: null,
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
 module.exports = {
-  addMoviev,
-  languageOptions,
-  updateStatus,
-  updatemoviev,
+  addMovie,
+  getMovies,
   getMoviesByCelebrity,
-  deletemoviev,
-  getmovievByid,
-  GenreMasterOptions,
+  getMovieById,
+  updateMovie,
+  updateStatus,
+  deleteMovie,
 };

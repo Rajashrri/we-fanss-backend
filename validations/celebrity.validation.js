@@ -809,33 +809,26 @@ const getAllCelebratySchema = z.object({
         .transform(Number)
         .optional(),
       search: z.string().trim().optional(),
-      profession: z
-        .string()
-        .regex(/^[0-9a-fA-F]{24}$/, "Invalid profession ID format")
-        .optional(),
-      language: z
-        .string()
-        .regex(/^[0-9a-fA-F]{24}$/, "Invalid language ID format")
-        .optional(),
-      gender: z
-        .enum(["Male", "Female", "Other", "Prefer not to say"])
-        .optional(),
+      // ✅ Allow empty string, convert to undefined
       status: z
-        .enum(["Draft", "In Review", "Published", "Archived"])
-        .optional(),
-      isFeatured: z
-        .string()
-        .regex(/^(true|false)$/, "isFeatured must be true or false")
-        .transform((val) => val === "true")
-        .optional(),
-      verificationStatus: z
-        .enum(["Not Claimed", "Claim Requested", "Verified"])
-        .optional(),
-      isAlive: z
-        .string()
-        .regex(/^(true|false)$/, "isAlive must be true or false")
-        .transform((val) => val === "true")
-        .optional(),
+        .union([
+          z.literal(""),
+          z.literal("0"),
+          z.literal("1"),
+        ])
+        .optional()
+        .transform((val) => (val === "" || val === undefined ? undefined : Number(val))),
+      // ✅ Allow empty string, convert to undefined
+      moderationState: z
+        .union([
+          z.literal(""),
+          z.literal("PENDING"),
+          z.literal("PUBLISHED"),
+          z.literal("REJECTED"),
+          z.literal("ALL"),
+        ])
+        .optional()
+        .transform((val) => (val === "" || val === undefined ? undefined : val)),
     })
     .optional(),
 });

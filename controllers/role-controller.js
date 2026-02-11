@@ -11,13 +11,19 @@ const { OPERATIONS, RESOURCES , PRIVILEGE_RESOURCES } = require('../utils/consta
 const getDefaultOperations = (resource) => {
   const operations = {};
   
-  if (resource === PRIVILEGE_RESOURCES.CELEBRITY) {
+  // Check if it's a celebrity sub-resource
+  const isCelebrityResource = resource.startsWith('celebrity.');
+  
+  if (isCelebrityResource) {
+    // Celebrity sub-resources get VIEW, ADD, EDIT, DELETE, PUBLISH
+    operations[OPERATIONS.VIEW] = false;
     operations[OPERATIONS.ADD] = false;
     operations[OPERATIONS.EDIT] = false;
     operations[OPERATIONS.DELETE] = false;
     operations[OPERATIONS.PUBLISH] = false;
   } else {
-    // Other resources get only ADD, EDIT, DELETE (no PUBLISH)
+    // Other resources get VIEW, ADD, EDIT, DELETE (no PUBLISH)
+    operations[OPERATIONS.VIEW] = false;
     operations[OPERATIONS.ADD] = false;
     operations[OPERATIONS.EDIT] = false;
     operations[OPERATIONS.DELETE] = false;
@@ -50,7 +56,7 @@ const createRole = async (req, res, next) => {
       is_system: false 
     });
 
-    // ✅ Create default permissions using PRIVILEGE_RESOURCES
+    // ✅ Create default permissions using new PRIVILEGE_RESOURCES
     const defaultPermissions = Object.values(PRIVILEGE_RESOURCES).map(resource => ({
       resource,
       operations: getDefaultOperations(resource)

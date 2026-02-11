@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const CustomOptionController = require("../controllers/customoption-controller");
+const CustomOptionController = require("../controllers/customoption-controller"); // ✅ SAME NAME
 const validate = require("../middlewares/validate.middleware");
 const authenticate = require("../middlewares/auth-middleware");
 
@@ -18,14 +18,11 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 
+// 📂 Multer Storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const dir = path.resolve("public/custom-section");
-
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
   filename: function (req, file, cb) {
@@ -37,13 +34,37 @@ const upload = multer({ storage });
 
 router.use(authenticate);
 
+
+
+
 router.post(
-  "/",
+  "/celebrity/:celebrity",
   upload.fields([{ name: "media", maxCount: 1 }]),
   validate(createCustomOptionSchema),
   CustomOptionController.addcustomoption
 );
 
+// 📄 Get all custom sections of a celebrity
+router.get(
+  "/celebrity/:celebrity",
+  validate(getDataSchema),
+  CustomOptionController.getdata
+);
+
+
+
+// =======================================
+// 🌍 GLOBAL CUSTOM SECTION ACTIONS
+// =======================================
+
+// 🔍 Get single custom section
+router.get(
+  "/:id",
+  validate(getCustomOptionByIdSchema),
+  CustomOptionController.getcustomoptionByid
+);
+
+// ✏️ Update custom section
 router.put(
   "/:id",
   upload.fields([{ name: "media", maxCount: 1 }]),
@@ -51,24 +72,14 @@ router.put(
   CustomOptionController.updatecustomoption
 );
 
+// 🔄 Update only status / moderation
 router.patch(
   "/:id/status",
   validate(updateStatusSchema),
   CustomOptionController.updateStatus
 );
 
-router.get(
-  "/celebrity/:celebrity",
-  validate(getDataSchema),
-  CustomOptionController.getdata
-);
-
-router.get(
-  "/:id",
-  validate(getCustomOptionByIdSchema),
-  CustomOptionController.getcustomoptionByid
-);
-
+// ❌ Delete custom section
 router.delete(
   "/:id",
   validate(deleteCustomOptionSchema),

@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Celebraty = require("../controllers/celebraty-controller");
 const { checkPrivilege } = require("../middlewares/privilege-middleware");
-const { RESOURCES, OPERATIONS } = require("../utils/constant/privilege-constant");
+const { OPERATIONS, PRIVILEGE_RESOURCES } = require("../utils/constant/privilege-constant");
 const authenticate = require("../middlewares/auth-middleware");
 const validate = require("../middlewares/validate.middleware");
 const { createUpload } = require("../utils/upload");
@@ -73,8 +73,6 @@ router.get(
   Celebraty.languageOptions
 );
 
-
-
 /**
  * @route   GET /api/celebrity/getSectionMasters
  * @desc    Get all section master types
@@ -88,50 +86,49 @@ router.get(
 /**
  * @route   GET /api/celebrity/getcelebraties
  * @desc    Get all celebrities with pagination and filters
- * @access  Private
- * @query   { page?, limit?, search?, profession?, language?, gender?, status? }
+ * @access  Private - Requires VIEW permission on CELEBRITY_BASIC_INFO
+ * @query   { page?, limit?, search?, profession?, language?, gender?, status?, moderationState? }
  */
 router.get(
   "/getcelebraties",
   validate(getAllCelebratySchema),
-  checkPrivilege(RESOURCES.CELEBRITY, OPERATIONS.ADD),
+  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, [OPERATIONS.VIEW , OPERATIONS.PUBLISH]),
   Celebraty.getdata
 );
 
 /**
  * @route   GET /api/celebrity/getcelebratyByid/:id
  * @desc    Get a single celebrity by ID with full details
- * @access  Private
+ * @access  Private - Requires VIEW permission on CELEBRITY_BASIC_INFO
  * @params  id - Celebrity ID
  */
 router.get(
   "/getcelebratyByid/:id",
   validate(getCelebratyByIdSchema),
-  checkPrivilege(RESOURCES.CELEBRITY, OPERATIONS.ADD),
+  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, [OPERATIONS.EDIT , OPERATIONS.PUBLISH]),
   Celebraty.getcelebratyByid
 );
 
 /**
  * @route   GET /api/celebrity/getCelebratySectionsByCeleb/:celebratyId
  * @desc    Get all sections for a specific celebrity
- * @access  Private
+ * @access  Private - Requires VIEW permission on CELEBRITY_BASIC_INFO
  * @params  celebratyId - Celebrity ID
  */
 router.get(
   "/getCelebratySectionsByCeleb/:celebratyId",
   validate(getCelebratySectionsByCelebSchema),
-  checkPrivilege(RESOURCES.CELEBRITY, OPERATIONS.ADD),
+  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.VIEW),
   Celebraty.getCelebratySectionsByCeleb
 );
 
 /**
  * @route   POST /api/celebrity/addcelebraty
  * @desc    Create a new celebrity with image and gallery upload
- * @access  Private - Requires ADD permission on CELEBRITY resource
+ * @access  Private - Requires ADD permission on CELEBRITY_BASIC_INFO resource
  * @body    { name, shortinfo, biography, templates?, sections?, professions?, languages?, gender?, dob?, socialLinks?, status? }
  * @files   image (single), gallery (multiple - max 10)
  */
-
 router.post(
   "/addcelebraty",
   celebrityUpload.fields([
@@ -139,15 +136,15 @@ router.post(
     { name: "gallery", maxCount: 10 },
   ]),
   parseNestedFormData, 
-  
   validate(createCelebratySchema),
- Celebraty.addcelebraty
+  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.ADD),
+  Celebraty.addcelebraty
 );
 
 /**
  * @route   PATCH /api/celebrity/updatecelebraty/:id
  * @desc    Update an existing celebrity with optional image/gallery update
- * @access  Private - Requires EDIT permission on CELEBRITY resource
+ * @access  Private - Requires EDIT permission on CELEBRITY_BASIC_INFO resource
  * @params  id - Celebrity ID
  * @body    { name?, shortinfo?, biography?, templates?, sections?, professions?, languages?, gender?, dob?, socialLinks?, status? }
  * @files   image? (single), gallery? (multiple - max 10)
@@ -160,33 +157,33 @@ router.patch(
   ]),
   parseNestedFormData,
   validate(updateCelebratySchema),
-  checkPrivilege(RESOURCES.CELEBRITY, OPERATIONS.EDIT),
+  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.EDIT),
   Celebraty.updatecelebraty
 );
 
 /**
  * @route   PATCH /api/celebrity/update-statuscelebraty
  * @desc    Update celebrity status (active/inactive)
- * @access  Private - Requires EDIT permission on CELEBRITY resource
+ * @access  Private - Requires EDIT permission on CELEBRITY_BASIC_INFO resource
  * @body    { id, status }
  */
 router.patch(
   "/update-statuscelebraty",
   validate(updateStatusCelebratySchema),
-  checkPrivilege(RESOURCES.CELEBRITY, OPERATIONS.EDIT),
+  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.EDIT),
   Celebraty.updateStatus
 );
 
 /**
  * @route   DELETE /api/celebrity/deletecelebraty/:id
  * @desc    Delete a celebrity
- * @access  Private - Requires DELETE permission on CELEBRITY resource
+ * @access  Private - Requires DELETE permission on CELEBRITY_BASIC_INFO resource
  * @params  id - Celebrity ID
  */
 router.delete(
   "/deletecelebraty/:id",
   validate(deleteCelebratySchema),
-  checkPrivilege(RESOURCES.CELEBRITY, OPERATIONS.DELETE),
+  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.DELETE),
   Celebraty.deletecelebraty
 );
 

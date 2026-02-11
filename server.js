@@ -99,7 +99,7 @@ app.use("/api/triviaTypes", triviaTypesRoute);
 app.use("/api/celebraty", celebrityRoute);
 app.use("/api/timeline", timelineRoute);
 app.use("/api/triviaentries", triviaentriesRoute);
-app.use("/api/moviev", movievRoute);
+app.use("/api/movie", movievRoute);
 app.use("/api/series", seriesRoute);
 app.use("/api/election", electionRoute);
 app.use("/api/positions", positionsRoute);
@@ -120,6 +120,8 @@ app.use('/api/related-personalities', require('./router/relatedpersonality-route
 
 app.use('/api/custom-sections' , require('./router/customoption-router'))
 app.use('/api/options', require('./router/options-router'));
+
+app.use("/api/moderation"  , require('./router/moderation-routes'))
 
 
 app.use("/api/celebrity-sections", require("./router/celebratysection-router"));

@@ -1,5 +1,4 @@
-// middleware/require-role.middleware.js
-const { STATIC_ROLES } = require("../utils/constant/role-constant");
+
 
 /**
  * ✅ Middleware: Check if user has one of the required roles

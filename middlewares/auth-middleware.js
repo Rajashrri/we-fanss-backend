@@ -80,7 +80,6 @@ const authenticate = async (req, res, next) => {
       isSystemRole: roleDoc.is_system || false  
     };
 
-    console.log("yaha pa ", req.user)
 
    
 

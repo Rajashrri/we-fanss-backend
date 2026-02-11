@@ -1,8 +1,7 @@
 const { Schema, model } = require("mongoose");
-
+const {moderationFields} = require("../models/schema/moderation-schema")
 const celebratySchema = new Schema(
   {
-   
     identityProfile: {
       name: {
         type: String,
@@ -66,11 +65,10 @@ const celebratySchema = new Schema(
       },
     },
 
-    
     personalDetails: {
       dob: {
         type: Date,
-        required: true, 
+        required: true,
       },
       birthplace: {
         type: String,
@@ -79,7 +77,7 @@ const celebratySchema = new Schema(
       gender: {
         type: String,
         enum: ["Male", "Female", "Other", "Prefer not to say"],
-        required: true, 
+        required: true,
         trim: true,
       },
       nationality: {
@@ -92,7 +90,6 @@ const celebratySchema = new Schema(
       },
     },
 
-    
     lifeStatus: {
       isAlive: {
         type: Boolean,
@@ -112,7 +109,6 @@ const celebratySchema = new Schema(
       },
     },
 
-    
     familyRelationships: {
       father: {
         name: {
@@ -134,7 +130,7 @@ const celebratySchema = new Schema(
           default: false,
         },
       },
-      
+
       spouses: [
         {
           name: {
@@ -185,7 +181,8 @@ const celebratySchema = new Schema(
       ],
     },
 
-    
+    ...moderationFields,
+
     professionalIdentity: {
       sections: [
         {
@@ -211,7 +208,6 @@ const celebratySchema = new Schema(
       primaryProfession: {
         type: Schema.Types.ObjectId,
         ref: "Profession",
-        
       },
       languages: [
         {
@@ -222,7 +218,6 @@ const celebratySchema = new Schema(
       primaryLanguage: {
         type: Schema.Types.ObjectId,
         ref: "Language",
-       
       },
       careerStartYear: {
         type: Number,
@@ -240,7 +235,6 @@ const celebratySchema = new Schema(
       },
     },
 
-    
     locationPresence: {
       currentCity: {
         type: String,
@@ -254,7 +248,6 @@ const celebratySchema = new Schema(
       ],
     },
 
-    
     publicAttributes: {
       height: {
         type: String,
@@ -267,7 +260,6 @@ const celebratySchema = new Schema(
       },
     },
 
-   
     socialLinks: [
       {
         platform: {
@@ -281,7 +273,6 @@ const celebratySchema = new Schema(
           required: true,
         },
         label: {
-          
           type: String,
           trim: true,
         },
@@ -313,7 +304,6 @@ const celebratySchema = new Schema(
       ],
     },
 
-   
     adminControls: {
       isFeatured: {
         type: Boolean,
@@ -330,7 +320,6 @@ const celebratySchema = new Schema(
       },
     },
 
-    
     auditTrail: {
       createdBy: {
         type: Schema.Types.ObjectId,
@@ -349,13 +338,11 @@ const celebratySchema = new Schema(
       },
     },
 
-    
     rejectionReason: {
       type: String,
       trim: true,
     },
 
-    
     status: {
       type: Number,
       enum: [0, 1],
@@ -363,7 +350,6 @@ const celebratySchema = new Schema(
       index: true,
     },
 
-    
     analyticsEngagement: {
       viewCount: {
         type: Number,
@@ -392,7 +378,6 @@ const celebratySchema = new Schema(
       },
     },
 
-   
     profileQuality: {
       profileCompletionPercentage: {
         type: Number,
@@ -403,10 +388,9 @@ const celebratySchema = new Schema(
     },
   },
   {
-    timestamps: true, 
-  }
+    timestamps: true,
+  },
 );
-
 
 celebratySchema.virtual("age").get(function () {
   if (!this.personalDetails?.dob) return null;
@@ -429,18 +413,14 @@ celebratySchema.virtual("age").get(function () {
   return age;
 });
 
-
 celebratySchema.pre("save", async function (next) {
-  
   if (this.isModified("identityProfile.slug") && !this.isNew) {
     try {
-      
       const oldDoc = await this.constructor
         .findById(this._id)
         .select("identityProfile.slug");
 
       if (oldDoc && oldDoc.identityProfile.slug !== this.identityProfile.slug) {
-        
         this.identityProfile.slugHistory.push({
           slug: oldDoc.identityProfile.slug,
           changedAt: new Date(),
@@ -457,34 +437,44 @@ celebratySchema.pre("save", async function (next) {
   }
 });
 
-
 celebratySchema.pre("save", function (next) {
-  
   if (this.lifeStatus && !this.lifeStatus.isAlive) {
-    
     if (!this.personalDetails?.dob) {
-      return next(new Error("Date of birth is required when person is marked as deceased"));
+      return next(
+        new Error(
+          "Date of birth is required when person is marked as deceased",
+        ),
+      );
     }
 
     if (!this.lifeStatus.dateOfDeath) {
-      return next(new Error("Date of death is required when person is marked as not alive"));
+      return next(
+        new Error(
+          "Date of death is required when person is marked as not alive",
+        ),
+      );
     }
     // Death date cannot be in the future
     if (this.lifeStatus.dateOfDeath > new Date()) {
       return next(new Error("Date of death cannot be in the future"));
     }
     // Death date should be after birth date
-    if (this.personalDetails?.dob && this.lifeStatus.dateOfDeath < this.personalDetails.dob) {
+    if (
+      this.personalDetails?.dob &&
+      this.lifeStatus.dateOfDeath < this.personalDetails.dob
+    ) {
       return next(new Error("Date of death cannot be before date of birth"));
     }
   }
   next();
 });
 
-
 celebratySchema.index({ "identityProfile.slug": 1 });
 celebratySchema.index({ "identityProfile.status": 1 });
-celebratySchema.index({ "identityProfile.slugHistory.slug": 1 }, { sparse: true }); 
+celebratySchema.index(
+  { "identityProfile.slugHistory.slug": 1 },
+  { sparse: true },
+);
 celebratySchema.index({ "adminControls.isFeatured": 1 });
 celebratySchema.index({ "adminControls.verificationStatus": 1 });
 celebratySchema.index({ "lifeStatus.isAlive": 1 });
@@ -492,7 +482,6 @@ celebratySchema.index({ createdAt: -1 });
 celebratySchema.index({ "auditTrail.publishedAt": -1 });
 celebratySchema.index({ "analyticsEngagement.popularityScore": -1 });
 celebratySchema.index({ "analyticsEngagement.trendingScore": -1 });
-
 
 celebratySchema.set("toJSON", { virtuals: true });
 celebratySchema.set("toObject", { virtuals: true });
