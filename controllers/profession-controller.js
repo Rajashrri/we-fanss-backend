@@ -118,15 +118,16 @@ const syncCelebritySections = async (professionId, templateIds, specificCelebrit
  */
 const getSectionTemplateOptions = async (req, res, next) => {
   try {
-    const templates = await SectionTemplate.find({ status: 1 })
-      .select("_id name")    
-      .sort({ name: 1 })     
-      .lean();               
+    const templates = await SectionTemplate.find({ status: 1 });
+
+    if (!templates || templates.length === 0) {
+      throw createHttpError(404, "No section templates found");
+    }
 
     return res.status(200).json({
       success: true,
-      message: "Section templates fetched successfully",
-      data: templates || [],  
+      message: "Section templates fetched succccccccfessfully",
+      data: templates,
     });
   } catch (error) {
     next(error);
