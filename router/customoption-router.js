@@ -39,7 +39,7 @@ router.use(authenticate);
 
 router.post(
   "/celebrity/:celebrity",
-  upload.fields([{ name: "media", maxCount: 1 }]),
+  upload.single("media"),           // 🔥 FIX
   validate(createCustomOptionSchema),
   CustomOptionController.addcustomoption
 );

@@ -10,6 +10,8 @@ const addcustomoption = async (req, res, next) => {
     const { title, description, celebrity } = req.body;
     const createdBy = req.user.userId;
 
+        console.log("BODY:", req.body);
+
     if (!title) {
       throw createError(400, "Title is required");
     }
