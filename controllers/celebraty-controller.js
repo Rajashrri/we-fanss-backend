@@ -130,7 +130,6 @@ const { processCelebrityFiles } = require("../utils/upload"); // ✅ centralized
  * @desc    Add new celebrity
  * @route   POST /api/celebraty/add
  * @access  Private
- */
 const addcelebraty = async (req, res, next) => {
   try {
     const {
@@ -148,380 +147,85 @@ const addcelebraty = async (req, res, next) => {
 
     const createdBy = req.user.userId;
 
-    // ==================== VALIDATION ====================
-    if (!identityProfile || !identityProfile.name) {
+    if (!identityProfile?.name) {
       throw createHttpError(400, "Celebrity name is required");
     }
 
-    if (!professionalIdentity?.professions || professionalIdentity.professions.length === 0) {
-      throw createHttpError(400, "At least one profession is required");
-    }
+    const slug =
+      identityProfile.slug || generateSlug({ name: identityProfile.name });
 
-    if (!professionalIdentity?.primaryProfession) {
-      throw createHttpError(400, "Primary profession is required");
-    }
-
-    // ==================== SLUG ====================
-    const finalSlug = identityProfile.slug || generateSlug({ name: identityProfile.name });
-
-    // ==================== DUPLICATE CHECKS ====================
-    const existingName = await Celebraty.findOne({
-      "identityProfile.name": { $regex: new RegExp(`^${identityProfile.name}$`, "i") },
+    const existing = await Celebraty.findOne({
+      "identityProfile.name": new RegExp(`^${identityProfile.name}$`, "i"),
     });
-    if (existingName) {
-      throw createHttpError(400, "Celebrity with this name already exists");
+
+    if (existing) {
+      throw createHttpError(400, "Celebrity already exists");
     }
 
-    const existingSlug = await Celebraty.findOne({ "identityProfile.slug": finalSlug });
-    if (existingSlug) {
-      throw createHttpError(409, "Slug already exists");
-    }
-
-    const existingInHistory = await Celebraty.findOne({
-      "identityProfile.slugHistory.slug": finalSlug,
-    });
-    if (existingInHistory) {
-      throw createHttpError(409, "Slug conflicts with historical slug");
-    }
-
-    // ==================== PARSE JSON FIELDS ====================
-    const parseProfessions =
-      typeof professionalIdentity?.professions === "string"
-        ? JSON.parse(professionalIdentity.professions)
-        : professionalIdentity?.professions || [];
-
-    const parseLanguages =
-      typeof professionalIdentity?.languages === "string"
-        ? JSON.parse(professionalIdentity.languages)
-        : professionalIdentity?.languages || [];
-
-    const parseSections =
-      typeof professionalIdentity?.sections === "string"
-        ? JSON.parse(professionalIdentity.sections)
-        : professionalIdentity?.sections || [];
-
-    const parseSocialLinks =
-      typeof socialLinks === "string" ? JSON.parse(socialLinks) : socialLinks || [];
-
-    const parseTags =
-      typeof seoMetadata?.tags === "string"
-        ? JSON.parse(seoMetadata.tags)
-        : seoMetadata?.tags || [];
-
-    const parseSeoKeywords =
-      typeof seoMetadata?.seoKeywords === "string"
-        ? JSON.parse(seoMetadata.seoKeywords)
-        : seoMetadata?.seoKeywords || [];
-
-    const parseKnownForRegion =
-      typeof locationPresence?.knownForRegion === "string"
-        ? JSON.parse(locationPresence.knownForRegion)
-        : locationPresence?.knownForRegion || [];
-
-    const parseGallery =
-      typeof identityProfile?.gallery === "string"
-        ? JSON.parse(identityProfile.gallery)
-        : identityProfile?.gallery || [];
-
-    const parseChildren =
-      typeof familyRelationships?.children === "string"
-        ? JSON.parse(familyRelationships.children)
-        : familyRelationships?.children || [];
-
-    const parseSiblings =
-      typeof familyRelationships?.siblings === "string"
-        ? JSON.parse(familyRelationships.siblings)
-        : familyRelationships?.siblings || [];
-
-    const parseSpouses =
-      typeof familyRelationships?.spouses === "string"
-        ? JSON.parse(familyRelationships.spouses)
-        : familyRelationships?.spouses || [];
-
-    // ==================== VALIDATE PRIMARY PROFESSION ====================
-    if (!parseProfessions.includes(professionalIdentity.primaryProfession)) {
-      throw createHttpError(
-        400,
-        "Primary profession must be one of the selected professions"
-      );
-    }
-
-    // ==================== VALIDATE PRIMARY LANGUAGE ====================
-    if (
-      professionalIdentity?.primaryLanguage &&
-      parseLanguages.length > 0 &&
-      !parseLanguages.includes(professionalIdentity.primaryLanguage)
-    ) {
-      throw createHttpError(
-        400,
-        "Primary language must be one of the selected languages"
-      );
-    }
-
-    // ==================== VALIDATE LIFE STATUS ====================
-    const isAlive = lifeStatus?.isAlive === 'true' || lifeStatus?.isAlive === true;
-    
-    console.log("=== Life Status Debug (Backend) ===");
-    console.log("Received lifeStatus:", lifeStatus);
-    console.log("isAlive (parsed):", isAlive);
-    console.log("dateOfDeath:", lifeStatus?.dateOfDeath);
-    console.log("placeOfDeath:", lifeStatus?.placeOfDeath);
-    console.log("causeOfDeath:", lifeStatus?.causeOfDeath);
-    console.log("===================================");
-
-    if (!isAlive && lifeStatus?.dateOfDeath) {
-      const deathDate = new Date(lifeStatus.dateOfDeath);
-      const today = new Date();
-      if (deathDate > today) {
-        throw createHttpError(400, "Date of death cannot be in the future");
-      }
-
-      if (personalDetails?.dob) {
-        const birthDate = new Date(personalDetails.dob);
-        if (deathDate < birthDate) {
-          throw createHttpError(400, "Date of death cannot be before date of birth");
-        }
-      }
-    }
-
-    // ==================== CREATE CELEBRITY ====================
     const newCelebraty = await Celebraty.create({
-      // A) Identity & Profile
       identityProfile: {
         name: identityProfile.name,
-        slug: finalSlug,
-        slugHistory: [],
-        image: null,
-        gallery: parseGallery,
-        shortinfo: identityProfile.shortinfo || "",
-        biography: identityProfile.biography || "",
-        status: identityProfile.status || "Draft",
+        slug,
+        image: "",
+        categoryImage: "", // ✅ NEW
+        gallery: [],
       },
 
-      // B) Personal Details
-      personalDetails: personalDetails
-        ? {
-            dob: personalDetails.dob || null,
-            birthplace: personalDetails.birthplace || "",
-            gender: personalDetails.gender || null,
-            nationality: personalDetails.nationality || "",
-            religion: personalDetails.religion || "",
-          }
-        : {},
+      personalDetails,
+      lifeStatus,
+      familyRelationships,
+      professionalIdentity,
+      locationPresence,
+      publicAttributes,
+      socialLinks,
+      seoMetadata,
+      adminControls,
 
-      // C) Life Status
-      lifeStatus: {
-        isAlive: isAlive,
-        dateOfDeath: !isAlive && lifeStatus?.dateOfDeath ? lifeStatus.dateOfDeath : null,
-        placeOfDeath: !isAlive && lifeStatus?.placeOfDeath ? lifeStatus.placeOfDeath : "",
-        causeOfDeath: !isAlive && lifeStatus?.causeOfDeath ? lifeStatus.causeOfDeath : "",
-      },
-
-      // D) Family & Relationships
-      familyRelationships: familyRelationships
-        ? {
-            father: familyRelationships.father || {},
-            mother: familyRelationships.mother || {},
-            spouses: parseSpouses,
-            children: parseChildren,
-            siblings: parseSiblings,
-          }
-        : {},
-
-      // E) Professional Identity
-      professionalIdentity: {
-        sections: parseSections,
-        professions: parseProfessions,
-        primaryProfession: professionalIdentity.primaryProfession,
-        languages: parseLanguages,
-        primaryLanguage: professionalIdentity.primaryLanguage || null,
-        careerStartYear: professionalIdentity.careerStartYear || null,
-        careerEndYear: professionalIdentity.careerEndYear || null,
-        isCareerOngoing:
-          professionalIdentity.isCareerOngoing !== undefined
-            ? professionalIdentity.isCareerOngoing
-            : true,
-      },
-
-      // F) Location & Public Presence
-      locationPresence: locationPresence
-        ? {
-            currentCity: locationPresence.currentCity || "",
-            knownForRegion: parseKnownForRegion,
-          }
-        : {},
-
-      // G) Physical & Public Attributes
-      publicAttributes: publicAttributes
-        ? {
-            height: publicAttributes.height || "",
-            signatureStyle: publicAttributes.signatureStyle || "",
-          }
-        : {},
-
-      // H) Social Links
-      socialLinks: parseSocialLinks,
-
-      // I) SEO Metadata
-      seoMetadata: seoMetadata
-        ? {
-            tags: parseTags,
-            seoMetaTitle: seoMetadata.seoMetaTitle || "",
-            seoMetaDescription: seoMetadata.seoMetaDescription || "",
-            seoKeywords: parseSeoKeywords,
-          }
-        : {},
-
-      // J) Admin Controls
-      adminControls: adminControls
-        ? {
-            isFeatured: adminControls.isFeatured || false,
-            verificationStatus: adminControls.verificationStatus || "Not Claimed",
-            internalNotes: adminControls.internalNotes || "",
-          }
-        : {},
-
-      // K) Audit Trail
       auditTrail: {
         createdBy,
-        updatedBy: null,
-        approvedBy: null,
         publishedAt: identityProfile.status === "Published" ? new Date() : null,
       },
 
-      // ✅ L) Moderation State (NEW - Default PENDING)
       moderationState: "PENDING",
-      moderatedBy: null,
-      moderatedAt: null,
-      moderationRemark: null,
-
-      // M) Root level status (Active/Inactive)
       status: 1,
-
-      // N) Analytics & Engagement
-      analyticsEngagement: {
-        viewCount: 0,
-        followerCount: 0,
-        popularityScore: 0,
-        trendingScore: 0,
-        searchBoostScore: 0,
-      },
-
-      // O) Profile Quality
-      profileQuality: {
-        profileCompletionPercentage: 0,
-      },
     });
 
-    const celebId = newCelebraty._id.toString();
-    console.log("✅ Celebrity created with ID:", celebId);
-    console.log("✅ Life Status saved:", newCelebraty.lifeStatus);
-    console.log("✅ Moderation State:", newCelebraty.moderationState);
+    const celebId = newCelebraty._id;
 
-    // ==================== FILES PROCESS ====================
-    const { imagePath, galleryPaths } = processCelebrityFiles(req.files, celebId);
+    // ================= FILES =================
+    const imagePath = req.files?.image?.[0]?.path;
+    const categoryImagePath = req.files?.categoryimage?.[0]?.path;
+    const galleryPaths =
+      req.files?.gallery?.map((f) => f.path) || [];
 
-    console.log("Image Path:", imagePath);
-    console.log("Gallery Paths:", galleryPaths);
+    const updateData = {};
 
-    if (imagePath || galleryPaths.length > 0) {
-      const imageUpdate = {};
-      if (imagePath) imageUpdate["identityProfile.image"] = imagePath;
-      if (galleryPaths.length > 0) {
-        imageUpdate["identityProfile.gallery"] = [
-          ...parseGallery,
-          ...galleryPaths,
-        ];
-      }
-
-      await Celebraty.findByIdAndUpdate(celebId, { $set: imageUpdate });
-      console.log("✅ Image paths updated in DB");
+    if (imagePath) {
+      updateData["identityProfile.image"] = imagePath;
     }
 
-    // ==================== SECTION SYNC ====================
-    if (parseProfessions.length === 0) {
-      console.log("⚠️ No professions — skipping section sync");
-
-      const finalCelebrity = await Celebraty.findById(celebId)
-        .populate("professionalIdentity.professions", "name")
-        .populate("professionalIdentity.languages", "name")
-        .populate("professionalIdentity.sections", "name")
-        .populate("socialLinks.platform", "name");
-
-      return res.status(201).json({
-        success: true,
-        message: "Celebrity created successfully and sent for review",
-        data: finalCelebrity,
-      });
+    if (categoryImagePath) {
+      updateData["identityProfile.categoryImage"] = categoryImagePath; // ✅
     }
 
-    const allNewSectionIds = [];
-
-    for (const profId of parseProfessions) {
-      const profession = await Professionalmaster.findById(profId);
-      if (!profession) {
-        console.log("❌ Profession not found:", profId);
-        continue;
-      }
-
-      const sectionTemplateIds = profession.sectiontemplate || [];
-      if (sectionTemplateIds.length === 0) continue;
-
-      for (const templateId of sectionTemplateIds) {
-        const template = await SectionTemplate.findById(templateId).populate(
-          "sections"
-        );
-        if (!template || !template.sections || template.sections.length === 0)
-          continue;
-
-        for (const section of template.sections) {
-          const exists = await CelebratySection.findOne({
-            celebratyId: celebId,
-            professions: profId.toString(),
-            templateId: templateId.toString(),
-            sectionmaster: section._id.toString(),
-          });
-
-          if (exists) continue;
-
-          await CelebratySection.create({
-            celebratyId: celebId,
-            professions: profId.toString(),
-            templateId: templateId.toString(),
-            sectionmaster: section._id.toString(),
-            sectiontemplate: section.name || template.title,
-            status: 1,
-            flag: 1,
-          });
-
-          allNewSectionIds.push(section._id);
-        }
-      }
+    if (galleryPaths.length > 0) {
+      updateData["identityProfile.gallery"] = galleryPaths;
     }
 
-    if (allNewSectionIds.length > 0) {
+    if (Object.keys(updateData).length > 0) {
       await Celebraty.findByIdAndUpdate(celebId, {
-        $addToSet: { "professionalIdentity.sections": { $each: allNewSectionIds } },
+        $set: updateData,
       });
-      console.log(`✅ Pushed ${allNewSectionIds.length} sections to celebrity`);
     }
 
-    // ==================== RESPONSE ====================
-    const finalCelebrity = await Celebraty.findById(celebId)
-      .populate("professionalIdentity.professions", "name")
-      .populate("professionalIdentity.languages", "name")
-      .populate("professionalIdentity.sections", "name")
-      .populate("professionalIdentity.primaryProfession", "name")
-      .populate("professionalIdentity.primaryLanguage", "name")
-      .populate("socialLinks.platform", "name");
+    const finalData = await Celebraty.findById(celebId);
 
     return res.status(201).json({
       success: true,
-      message: "Celebrity created successfully and sent for review",
-      data: finalCelebrity,
+      message: "Celebrity created successfully",
+      data: finalData,
     });
   } catch (error) {
-    console.error("❌ Error in addcelebraty:", error);
     next(error);
   }
 };
@@ -765,6 +469,8 @@ const updatecelebraty = async (req, res, next) => {
 
     // ==================== HANDLE FILE UPLOADS ====================
     let profileImage = existingCelebraty.identityProfile?.image;
+
+    
     let mergedGallery = [];
 
     // ✅ STEP 1: Parse old gallery properly
