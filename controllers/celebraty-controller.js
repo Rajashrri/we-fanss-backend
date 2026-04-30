@@ -126,10 +126,7 @@ const getSectionMasters = async (req, res, next) => {
 
 const { processCelebrityFiles } = require("../utils/upload"); // ✅ centralized helper
 
-/**
- * @desc    Add new celebrity
- * @route   POST /api/celebraty/add
- * @access  Private
+
 const addcelebraty = async (req, res, next) => {
   try {
     const {
