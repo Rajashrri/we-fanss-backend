@@ -47,17 +47,38 @@ const globalErrorHandler  = require("./middlewares/error.middleware");
 const trackActivity = require("./middlewares/trackActivity");
 const ckeditorRoute = require("./router/ckeditor-router");
 
+
+
+//frontend
+const frontcategoryRoutes = require("./router/frontcategory-router");
+console.log(process.env.WEBSITE_URL);
+
+
 console.log( process.env.FRONTEND_URL)
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.WEBSITE_URL,
+];
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL, 
+  origin: function (origin, callback) {
+
+    // Postman / no origin requests allow
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   credentials: true,
 };
 
-
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -128,6 +149,9 @@ app.use("/api/celebrity-sections", require("./router/celebratysection-router"));
 
 // app.use("/api/references", referenceRoute); 
 
+
+//front api
+app.use("/api/front", frontcategoryRoutes);
 
 
 app.get("/health", (req, res) => {
