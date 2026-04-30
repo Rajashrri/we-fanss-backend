@@ -39,6 +39,8 @@ const celebratySchema = new Schema(
         type: String,
         trim: true,
       },
+            categoryImage: { type: String, default: "" },
+
       gallery: [
         {
           type: String,
