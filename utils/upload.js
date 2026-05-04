@@ -51,10 +51,15 @@ const referencesUpload = createUpload("references", {
 
 const moveFile = (file, targetFolder, newName) => {
   const dir = path.join(PROJECT_ROOT, "public", targetFolder);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+  // folder create
+  fs.mkdirSync(dir, { recursive: true });
 
   const newPath = path.join(dir, newName);
-  fs.renameSync(file.path, newPath);
+
+  // safer move
+  fs.copyFileSync(file.path, newPath);
+  fs.unlinkSync(file.path);
 
   return `/${targetFolder}/${newName}`;
 };
