@@ -2,7 +2,10 @@ const express = require("express");
 const router = express.Router();
 const Celebraty = require("../controllers/celebraty-controller");
 const { checkPrivilege } = require("../middlewares/privilege-middleware");
-const { OPERATIONS, PRIVILEGE_RESOURCES } = require("../utils/constant/privilege-constant");
+const {
+  OPERATIONS,
+  PRIVILEGE_RESOURCES,
+} = require("../utils/constant/privilege-constant");
 const authenticate = require("../middlewares/auth-middleware");
 const validate = require("../middlewares/validate.middleware");
 const { createUpload } = require("../utils/upload");
@@ -15,10 +18,11 @@ const {
   getAllCelebratySchema,
   getCelebratySectionsByCelebSchema,
 } = require("../validations/celebrity.validation");
-const { parseNestedFormData } = require("../middlewares/formdata-parser.middleware");
+const {
+  parseNestedFormData,
+} = require("../middlewares/formdata-parser.middleware");
 
-
-const celebrityUpload = createUpload('celebrity');
+const celebrityUpload = createUpload("celebrity");
 
 // ✅ Apply authentication to all routes
 router.use(authenticate);
@@ -28,60 +32,42 @@ router.use(authenticate);
  * @desc    Get profession options for dropdown
  * @access  Private
  */
-router.get(
-  "/professionsOptions",
-  Celebraty.professionsOptions
-);
+router.get("/professionsOptions", Celebraty.professionsOptions);
 
 /**
  * @route   GET /api/celebrity/sociallist
  * @desc    Get social link options for dropdown
  * @access  Private
  */
-router.get(
-  "/sociallist",
-  Celebraty.sociallist
-);
+router.get("/sociallist", Celebraty.sociallist);
 
 /**
  * @route   GET /api/celebrity/professions
  * @desc    Get all professions
  * @access  Private
  */
-router.get(
-  "/professions",
-  Celebraty.getProfessions
-);
+router.get("/professions", Celebraty.getProfessions);
 
 /**
  * @route   GET /api/celebrity/fetchSectionTemplate
  * @desc    Get section templates for celebrity sections
  * @access  Private
  */
-router.get(
-  "/fetchSectionTemplate",
-  Celebraty.getSectionTemplates
-);
+router.get("/fetchSectionTemplate", Celebraty.getSectionTemplates);
 
 /**
  * @route   GET /api/celebrity/languageOptions
  * @desc    Get language options for dropdown
  * @access  Private
  */
-router.get(
-  "/languageOptions",
-  Celebraty.languageOptions
-);
+router.get("/languageOptions", Celebraty.languageOptions);
 
 /**
  * @route   GET /api/celebrity/getSectionMasters
  * @desc    Get all section master types
  * @access  Private
  */
-router.get(
-  "/getSectionMasters",
-  Celebraty.getSectionMasters
-);
+router.get("/getSectionMasters", Celebraty.getSectionMasters);
 
 /**
  * @route   GET /api/celebrity/getcelebraties
@@ -92,8 +78,11 @@ router.get(
 router.get(
   "/getcelebraties",
   validate(getAllCelebratySchema),
-  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, [OPERATIONS.VIEW , OPERATIONS.PUBLISH]),
-  Celebraty.getdata
+  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, [
+    OPERATIONS.VIEW,
+    OPERATIONS.PUBLISH,
+  ]),
+  Celebraty.getdata,
 );
 
 /**
@@ -105,8 +94,11 @@ router.get(
 router.get(
   "/getcelebratyByid/:id",
   validate(getCelebratyByIdSchema),
-  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, [OPERATIONS.EDIT , OPERATIONS.PUBLISH]),
-  Celebraty.getcelebratyByid
+  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, [
+    OPERATIONS.EDIT,
+    OPERATIONS.PUBLISH,
+  ]),
+  Celebraty.getcelebratyByid,
 );
 
 /**
@@ -119,7 +111,7 @@ router.get(
   "/getCelebratySectionsByCeleb/:celebratyId",
   validate(getCelebratySectionsByCelebSchema),
   checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.VIEW),
-  Celebraty.getCelebratySectionsByCeleb
+  Celebraty.getCelebratySectionsByCeleb,
 );
 
 /**
@@ -133,13 +125,14 @@ router.post(
   "/addcelebraty",
   celebrityUpload.fields([
     { name: "image", maxCount: 1 },
+    { name: "categoryimage", maxCount: 1 }, // ✅ ADD THIS
 
     { name: "gallery", maxCount: 10 },
   ]),
-  parseNestedFormData, 
+  parseNestedFormData,
   validate(createCelebratySchema),
   checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.ADD),
-  Celebraty.addcelebraty
+  Celebraty.addcelebraty,
 );
 
 /**
@@ -154,12 +147,14 @@ router.patch(
   "/updatecelebraty/:id",
   celebrityUpload.fields([
     { name: "image", maxCount: 1 },
+    { name: "categoryimage", maxCount: 1 }, // ✅ ADD THIS
+
     { name: "gallery", maxCount: 10 },
   ]),
   parseNestedFormData,
   validate(updateCelebratySchema),
   checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.EDIT),
-  Celebraty.updatecelebraty
+  Celebraty.updatecelebraty,
 );
 
 /**
@@ -172,7 +167,7 @@ router.patch(
   "/update-statuscelebraty",
   validate(updateStatusCelebratySchema),
   checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.EDIT),
-  Celebraty.updateStatus
+  Celebraty.updateStatus,
 );
 
 /**
@@ -185,7 +180,7 @@ router.delete(
   "/deletecelebraty/:id",
   validate(deleteCelebratySchema),
   checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.DELETE),
-  Celebraty.deletecelebraty
+  Celebraty.deletecelebraty,
 );
 
 module.exports = router;
