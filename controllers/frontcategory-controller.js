@@ -24,7 +24,7 @@ const getCelebritiesByCategory = async (req, res) => {
       status: 1,
     })
     .select(
-  "identityProfile.name identityProfile.slug identityProfile.image personalDetails.gender personalDetails.dob professionalIdentity.languages"
+  "identityProfile.name identityProfile.slug identityProfile.categoryImage personalDetails.gender personalDetails.dob professionalIdentity.languages"
 )
 .populate("professionalIdentity.languages", "name"); // ✅ IMPORTANT
     res.status(200).json({
