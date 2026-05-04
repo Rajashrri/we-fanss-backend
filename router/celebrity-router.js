@@ -133,6 +133,7 @@ router.post(
   "/addcelebraty",
   celebrityUpload.fields([
     { name: "image", maxCount: 1 },
+
     { name: "gallery", maxCount: 10 },
   ]),
   parseNestedFormData, 

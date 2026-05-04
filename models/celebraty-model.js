@@ -49,14 +49,12 @@ const celebratySchema = new Schema(
       ],
       shortinfo: {
         type: String,
-        required: true, // ✅ NOW REQUIRED
         trim: true,
         minlength: 10,
         maxlength: 500,
       },
       biography: {
         type: String,
-        required: true, // ✅ NOW REQUIRED
         trim: true,
       },
       status: {
