@@ -158,7 +158,7 @@ const loginUser = async (req, res, next) => {
         req,
       });
 
-      throw createHttpError(401, "Invalid email or password");
+      throw createHttpError(401, "Invalid credentials. Please try again");
     }
 
     if (!user.isActive) {
@@ -193,7 +193,7 @@ const loginUser = async (req, res, next) => {
         req,
       });
 
-      throw createHttpError(401, "Invalid email or password");
+      throw createHttpError(401, "Invalid credentials. Please try again.");
     }
 
     // Check if static OTP mode is enabled
@@ -416,7 +416,7 @@ const verifyOtp = async (req, res, next) => {
         req,
       });
 
-      throw createHttpError(401, "Invalid verification code");
+      throw createHttpError(401, "Please enter a valid 6-digit code");
     }
 
     // ✅ OTP VERIFIED - Clean up email OTP if it was used
@@ -577,14 +577,14 @@ const forgotPassword = async (req, res, next) => {
     if (!user) {
       return res.status(200).json({
         success: true,
-        message: "If an account exists with this email, a password reset code has been sent.",
+        message: "If the email is registered, a password reset link has been sent successfully.",
       });
     }
 
     if (!user.isActive) {
       return res.status(200).json({
         success: true,
-        message: "If an account exists with this email, a password reset code has been sent.",
+        message: "If the email is registered, a password reset link has been sent successfully.",
       });
     }
 
