@@ -118,13 +118,11 @@ const verifyResetOtpSchema = z.object({
 =============================== */
 const resetPasswordSchema = z.object({
   body: z.object({
-    email: z
+    token: z
       .string()
-      .email("Invalid email format")
-      .trim()
-      .toLowerCase(),
+      .min(1, "Reset token is required"),
 
-    newPassword: z
+    password: z
       .string()
       .min(6, "Password must be at least 6 characters")
       .max(50, "Password must be less than 50 characters"),

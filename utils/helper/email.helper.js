@@ -167,7 +167,151 @@ const getWelcomeEmailTemplate = (
 </html>
 `;
 };
+// 4. Forgot Password Reset Link Email Template (Same Design as Login OTP)
+const getForgotPasswordLinkTemplate = (
+  username,
+  resetLink,
+  expiryMinutes = 15
+) => {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WE FANSS - Reset Password</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000000 !important;
+    }
+  </style>
+</head>
 
+<body style="margin:0 !important; padding:0 !important; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; background-color:#000000 !important;">
+
+<div style="background-color:#000000; padding:40px 20px; min-height:100vh;">
+
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td align="center">
+
+<table width="600" cellpadding="0" cellspacing="0"
+style="background-color:#1a1a1a; border-radius:12px; overflow:hidden; border:1px solid #2a2a2a; max-width:600px;">
+
+<!-- Logo -->
+<tr>
+<td style="padding:40px 30px 30px 30px;">
+<div style="display:inline-block; background-color:#0F4F72; width:48px; height:48px; border-radius:8px; text-align:center; line-height:48px; font-size:24px;">
+🔑
+</div>
+</td>
+</tr>
+
+<!-- Header -->
+<tr>
+<td style="padding:0 30px 30px 30px;">
+<h1 style="margin:0; color:#ffffff; font-size:24px; font-weight:600; line-height:1.3;">
+Reset Your Password
+</h1>
+</td>
+</tr>
+
+<!-- Content -->
+<tr>
+<td style="padding:0 30px 30px 30px;">
+
+<p style="margin:0 0 20px; color:#e0e0e0; font-size:15px; line-height:1.6;">
+Dear <strong style="color:#ffffff;">${username}</strong>,
+</p>
+
+<p style="margin:0 0 25px; color:#e0e0e0; font-size:15px; line-height:1.6;">
+We received a request to reset the password for your
+<strong style="color:#0F4F72;">WE FANSS</strong> account.
+</p>
+
+<p style="margin:0 0 25px; color:#e0e0e0; font-size:15px; line-height:1.6;">
+Click the button below to create a new password:
+</p>
+
+<!-- Button -->
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td align="center" style="padding:0 0 30px 0;">
+<a href="${resetLink}"
+style="
+display:inline-block;
+background-color:#0F4F72;
+color:#ffffff;
+text-decoration:none;
+padding:14px 30px;
+border-radius:8px;
+font-size:16px;
+font-weight:bold;
+">
+Reset Password
+</a>
+</td>
+</tr>
+</table>
+
+<p style="margin:0 0 20px; color:#b0b0b0; font-size:14px; line-height:1.6;">
+This reset link is valid for
+<strong style="color:#ffffff;">${expiryMinutes} minutes</strong>.
+</p>
+
+<!-- Warning -->
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td style="background-color:#2a2a2a; border-left:4px solid #ffc107; border-radius:6px; padding:15px;">
+<p style="margin:0; color:#e0e0e0; font-size:14px; line-height:1.5;">
+⚠️ <strong style="color:#ffc107;">Important:</strong>
+If you did not request this password reset, please ignore this email.
+</p>
+</td>
+</tr>
+</table>
+
+<p style="margin:30px 0 0 0; color:#e0e0e0; font-size:14px; line-height:1.6;">
+Regards,<br>
+<strong style="color:#0F4F72;">Team WE FANSS</strong>
+</p>
+
+</td>
+</tr>
+
+<!-- Divider -->
+<tr>
+<td style="padding:0 30px;">
+<div style="border-top:1px solid #2a2a2a;"></div>
+</td>
+</tr>
+
+<!-- Footer -->
+<tr>
+<td style="padding:30px; text-align:left;">
+<p style="margin:0 0 5px; color:#808080; font-size:12px; line-height:1.5;">
+© ${new Date().getFullYear()} WE FANSS. All Rights Reserved
+</p>
+
+<p style="margin:5px 0 0; color:#808080; font-size:12px; line-height:1.5;">
+This is an automated message, please do not reply to this email.
+</p>
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</div>
+</body>
+</html>
+`;
+};
 // 2. Login OTP Email Template (For all roles - Admin/Sub Admin/Any User)
 const getLoginOTPTemplate = (username, otp, expiryMinutes = 10) => {
   return `
@@ -419,5 +563,6 @@ const getForgotPasswordOTPTemplate = (username, otp, expiryMinutes = 10) => {
 module.exports = {
   getWelcomeEmailTemplate,
   getLoginOTPTemplate,
-  getForgotPasswordOTPTemplate
+  getForgotPasswordOTPTemplate,
+  getForgotPasswordLinkTemplate
 };

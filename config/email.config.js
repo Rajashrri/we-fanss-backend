@@ -5,7 +5,11 @@ const {
   getWelcomeEmailTemplate,
   getLoginOTPTemplate,
   getForgotPasswordOTPTemplate,
+  getForgotPasswordLinkTemplate
 } = require("../utils/helper/email.helper"); 
+
+const crypto = require("crypto");
+
 
 const sendEmail = async ({ to, subject, text, html, attachments }) => {
   if (!to) {
@@ -124,6 +128,82 @@ Team WE FANSS`;
   });
 };
 
+
+//resendotp
+
+// email config file me ye naya function add karo
+
+// =======================================
+// RESEND LOGIN OTP EMAIL
+// =======================================
+const sendResendOTPEmail = async (
+  to,
+  username,
+  otp,
+  expiryMinutes = 10
+) => {
+  const html = getLoginOTPTemplate(
+    username,
+    otp,
+    expiryMinutes
+  );
+
+  const text = `Dear ${username},
+
+A new verification code has been requested for your WE FANSS account.
+
+Your New OTP: ${otp}
+
+This OTP is valid for ${expiryMinutes} minutes.
+
+If you did not request this code, please contact support immediately.
+
+Regards,
+Team WE FANSS`;
+
+  await sendEmail({
+    to,
+    subject: "Your WE FANSS Resend OTP Code",
+    text,
+    html,
+  });
+};
+
+//reset link
+
+const sendForgotPasswordLinkEmail = async (
+  to,
+  username,
+  resetLink
+) => {
+  // ✅ New Template Use Here
+  const html = getForgotPasswordLinkTemplate(
+    username,
+    resetLink,
+    15
+  );
+
+  const text = `Dear ${username},
+
+We received a request to reset your password.
+
+Reset Password Link:
+${resetLink}
+
+This link is valid for 15 minutes.
+
+If you did not request this password reset, please ignore this email.
+
+Regards,
+Team WE FANSS`;
+
+  await sendEmail({
+    to,
+    subject: "WE FANSS - Reset Password Link",
+    text,
+    html,
+  });
+};
 // Send Welcome Email with QR Code
 const sendWelcomeEmail = async (
   to,
@@ -188,4 +268,7 @@ module.exports = {
   sendLoginOTPEmail,
   sendForgotPasswordOTPEmail,
   sendWelcomeEmail,
+  sendResendOTPEmail,
+  sendForgotPasswordLinkEmail
+  
 };
