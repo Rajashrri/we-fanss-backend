@@ -56,9 +56,9 @@ passwordResetTokenExpiry: {
     // Google Authenticator (TOTP)
     totpSecret: {
       type: String,
-      select: false,
-      required: true,
     },
+
+    
     totpQrCode: {
       type: String,
       select: false,

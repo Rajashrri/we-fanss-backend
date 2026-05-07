@@ -254,65 +254,101 @@ const resendOtp = async (req, res, next) => {
       throw createHttpError(400, "Email is required");
     }
 
-    // Sanitize input
     const sanitizedEmail = sanitizeInput(email).toLowerCase();
 
-    const user = await User.findOne({ email: sanitizedEmail });
+    const user = await User.findOne({
+      email: sanitizedEmail,
+    }).select("+totpSecret +totpEnabled");
 
     if (!user) {
       return res.status(200).json({
         success: true,
-        message: "If an account exists, a new verification code has been sent.",
+        message:
+          "If an account exists, a verification method is available.",
       });
     }
 
     if (!user.isActive) {
-      throw createHttpError(403, "Your account has been deactivated.");
+      throw createHttpError(
+        403,
+        "Your account has been deactivated."
+      );
     }
 
-    // Rate limiting
+    // ==================================================
+    // GOOGLE AUTHENTICATOR ENABLED
+    // ==================================================
+    if (user.totpEnabled && user.totpSecret) {
+      return res.status(200).json({
+        success: true,
+        type: "GOOGLE_AUTHENTICATOR",
+        message:
+          "Please use the code from your Google Authenticator app.",
+      });
+    }
+
+    // ==================================================
+    // EMAIL OTP FLOW
+    // ==================================================
     const now = Date.now();
+
     if (user.emailOtp && user.emailOtp.expiresAt) {
-      const otpCreatedAt = user.emailOtp.expiresAt.getTime() - 10 * 60 * 1000;
+      const otpCreatedAt =
+        user.emailOtp.expiresAt.getTime() - 10 * 60 * 1000;
+
       const timeSinceOtp = now - otpCreatedAt;
 
       if (timeSinceOtp < 60 * 1000) {
-        const waitSeconds = Math.ceil((60 * 1000 - timeSinceOtp) / 1000);
+        const waitSeconds = Math.ceil(
+          (60 * 1000 - timeSinceOtp) / 1000
+        );
+
         throw createHttpError(
           429,
-          `Please wait ${waitSeconds} seconds before requesting a new code.`,
+          `Please wait ${waitSeconds} seconds before requesting a new code.`
         );
       }
     }
 
-    // Generate new OTP
+    // Generate Email OTP
     const otp = generateOTP();
-    const otpExpiresAt = new Date(now + 10 * 60 * 1000);
+
+    const otpExpiresAt = new Date(
+      now + 10 * 60 * 1000
+    );
 
     user.emailOtp = {
       code: otp,
       expiresAt: otpExpiresAt,
       attempts: 0,
     };
+
     await user.save();
 
-    // Send OTP email
-    try {
-      await sendResendOTPEmail(user.email, user.name, otp, 10);
-    } catch (emailError) {
-      console.error("❌ RESEND MAIL ERROR:");
-      console.error("Message:", emailError.message);
-      console.error("Stack:", emailError.stack);
+    console.log("RESEND OTP:", otp);
 
-      throw createHttpError(
-        500,
-        emailError.message || "Failed to send verification code.",
+    // Send Mail
+    try {
+      await sendResendOTPEmail(
+        user.email,
+        user.name,
+        otp,
+        10
+      );
+
+      console.log("OTP email sent");
+    } catch (emailError) {
+      console.error(
+        "MAIL ERROR:",
+        emailError.message
       );
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "A new verification code has been sent to your email.",
+      type: "EMAIL_OTP",
+      message:
+        "Verification code generated successfully.",
     });
   } catch (error) {
     next(error);
@@ -353,7 +389,7 @@ const verifyOtp = async (req, res, next) => {
     // ==========================================
     // 1. GOOGLE AUTHENTICATOR
     // ==========================================
-    if (user.totpSecret && user.totpEnabled) {
+    if (user.totpSecret) {
       isValid = speakeasy.totp.verify({
         secret: user.totpSecret,
         encoding: "base32",
