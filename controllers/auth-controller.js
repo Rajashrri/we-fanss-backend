@@ -146,12 +146,15 @@ const loginUser = async (req, res, next) => {
       throw createHttpError(400, "Please provide both email and password");
     }
 
+    // Sanitize email
     const sanitizedEmail = sanitizeInput(email).toLowerCase();
 
-    const user = await User.findOne({ email: sanitizedEmail }).select(
-      "+password",
-    );
+    // Find user
+    const user = await User.findOne({
+      email: sanitizedEmail,
+    }).select("+password");
 
+    // Invalid email
     if (!user) {
       await logLoginHistory({
         userEmail: sanitizedEmail,
@@ -166,6 +169,7 @@ const loginUser = async (req, res, next) => {
       throw createHttpError(401, "Invalid credentials. Please try again");
     }
 
+    // Inactive account
     if (!user.isActive) {
       await logLoginHistory({
         userId: user._id,
@@ -182,11 +186,13 @@ const loginUser = async (req, res, next) => {
 
       throw createHttpError(
         403,
-        "Your account has been deactivated. Please contact support.",
+        "Your account has been deactivated. Please contact support."
       );
     }
 
+    // Check password
     const isMatch = await user.comparePassword(password);
+
     if (!isMatch) {
       await logLoginHistory({
         userId: user._id,
@@ -204,16 +210,15 @@ const loginUser = async (req, res, next) => {
       throw createHttpError(401, "Invalid credentials. Please try again.");
     }
 
-    // Check if static OTP mode is enabled
-    const useStaticOTP = process.env.ENABLE_STATIC_OTP_PROD === "true";
-
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    console.log(otp);
+    console.log("Generated OTP:", otp);
 
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    // OTP expiry (10 mins)
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
+    // Save OTP
     user.emailOtp = {
       code: otp,
       expiresAt: otpExpiry,
@@ -222,25 +227,50 @@ const loginUser = async (req, res, next) => {
 
     await user.save();
 
-    // Send OTP via email (email service internally checks static mode)
-    try {
-      await sendLoginOTPEmail(user.email, user.name, otp, 10);
-    } catch (emailError) {
-      console.error("Failed to send login OTP email:", emailError);
-      // Don't block login if email fails
-    }
+    // =========================
+    // SEND RESPONSE IMMEDIATELY
+    // =========================
 
-    // Same response for both modes
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Password verified. OTP has been sent to your email.",
       email: user.email,
     });
+
+    // =========================
+    // SEND EMAIL IN BACKGROUND
+    // =========================
+
+    sendLoginOTPEmail(user.email, user.name, otp, 10)
+      .then(() => {
+        console.log("OTP email sent successfully");
+      })
+      .catch((emailError) => {
+        console.error("Failed to send login OTP email:", emailError);
+      });
+
+    // =========================
+    // OPTIONAL LOGIN HISTORY
+    // =========================
+
+    logLoginHistory({
+      userId: user._id,
+      userName: user.name,
+      userEmail: user.email,
+      userRole: user.role,
+      loginSuccess: true,
+      loginMethod: "PASSWORD",
+      loginFlow: "PASSWORD_OTP",
+      activity: `Password verified for ${user.email}. OTP sent.`,
+      req,
+    }).catch((err) => {
+      console.error("Login history error:", err);
+    });
+
   } catch (error) {
     next(error);
   }
 };
-
 /**
  * @route   POST /api/auth/resend-otp
  * @desc    Resend OTP for login verification
@@ -260,6 +290,7 @@ const resendOtp = async (req, res, next) => {
       email: sanitizedEmail,
     }).select("+totpSecret +totpEnabled");
 
+    // Security-safe response
     if (!user) {
       return res.status(200).json({
         success: true,
@@ -268,6 +299,7 @@ const resendOtp = async (req, res, next) => {
       });
     }
 
+    // Inactive account
     if (!user.isActive) {
       throw createHttpError(
         403,
@@ -275,9 +307,10 @@ const resendOtp = async (req, res, next) => {
       );
     }
 
-    // ==================================================
-    // GOOGLE AUTHENTICATOR ENABLED
-    // ==================================================
+    // =========================================
+    // GOOGLE AUTHENTICATOR FLOW
+    // =========================================
+
     if (user.totpEnabled && user.totpSecret) {
       return res.status(200).json({
         success: true,
@@ -287,11 +320,13 @@ const resendOtp = async (req, res, next) => {
       });
     }
 
-    // ==================================================
+    // =========================================
     // EMAIL OTP FLOW
-    // ==================================================
+    // =========================================
+
     const now = Date.now();
 
+    // Rate limit resend
     if (user.emailOtp && user.emailOtp.expiresAt) {
       const otpCreatedAt =
         user.emailOtp.expiresAt.getTime() - 10 * 60 * 1000;
@@ -310,13 +345,15 @@ const resendOtp = async (req, res, next) => {
       }
     }
 
-    // Generate Email OTP
+    // Generate OTP
     const otp = generateOTP();
 
+    // Expiry
     const otpExpiresAt = new Date(
       now + 10 * 60 * 1000
     );
 
+    // Save OTP
     user.emailOtp = {
       code: otp,
       expiresAt: otpExpiresAt,
@@ -327,29 +364,37 @@ const resendOtp = async (req, res, next) => {
 
     console.log("RESEND OTP:", otp);
 
-    // Send Mail
-    try {
-      await sendResendOTPEmail(
-        user.email,
-        user.name,
-        otp,
-        10
-      );
+    // =========================================
+    // SEND RESPONSE IMMEDIATELY
+    // =========================================
 
-      console.log("OTP email sent");
-    } catch (emailError) {
-      console.error(
-        "MAIL ERROR:",
-        emailError.message
-      );
-    }
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       type: "EMAIL_OTP",
       message:
         "Verification code generated successfully.",
     });
+
+    // =========================================
+    // SEND EMAIL IN BACKGROUND
+    // =========================================
+
+    sendResendOTPEmail(
+      user.email,
+      user.name,
+      otp,
+      10
+    )
+      .then(() => {
+        console.log("OTP resend email sent");
+      })
+      .catch((emailError) => {
+        console.error(
+          "MAIL ERROR:",
+          emailError.message
+        );
+      });
+
   } catch (error) {
     next(error);
   }
