@@ -16,6 +16,7 @@ const {
   getCelebratyByIdSchema,
   deleteCelebratySchema,
   getAllCelebratySchema,
+  updateFeaturedCelebratySchema,
   getCelebratySectionsByCelebSchema,
 } = require("../validations/celebrity.validation");
 const {
@@ -169,6 +170,18 @@ router.patch(
   checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO, OPERATIONS.EDIT),
   Celebraty.updateStatus,
 );
+
+
+router.patch(
+  "/update-celebratyfeatured",
+  validate(updateFeaturedCelebratySchema),
+  checkPrivilege(
+    PRIVILEGE_RESOURCES.CELEBRITY_BASIC_INFO,
+    OPERATIONS.EDIT
+  ),
+  Celebraty.updateCelebratyFeatured
+);
+
 
 /**
  * @route   DELETE /api/celebrity/deletecelebraty/:id

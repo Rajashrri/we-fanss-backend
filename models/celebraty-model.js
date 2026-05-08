@@ -64,6 +64,12 @@ const celebratySchema = new Schema(
         default: "Draft",
       },
     },
+ featured: {
+         type: Number,
+      enum: [0, 1],
+      default: 0,
+      index: true,
+    },
 
     personalDetails: {
       dob: {

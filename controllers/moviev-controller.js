@@ -153,12 +153,9 @@ const getMoviesByCelebrity = async (req, res, next) => {
     const movies = await Movie.find({
       celebrity,
       status: 1,
-      moderationState: "PUBLISHED",
+      // moderationState: "PUBLISHED",
     })
-      .populate("languages", "name")
-      .populate("genre", "name")
-      .select("-createdBy -moderatedBy") // ✅ Fixed field name
-      .sort({ createdAt: -1 });
+     
 
     return res.status(200).json({
       success: true,

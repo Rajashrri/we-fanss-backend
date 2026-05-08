@@ -169,6 +169,8 @@ const addcelebraty = async (req, res, next) => {
         image: "",
         categoryImage: "",
         gallery: [],
+          shortinfo: identityProfile.shortinfo || "",
+         biography: identityProfile.biography || "",
       },
 
       personalDetails,
@@ -564,19 +566,25 @@ const updatecelebraty = async (req, res, next) => {
       console.log("🖼️ New gallery images:", galleryPaths);
 
       // Delete old profile image if new one is uploaded
-      if (imagePath && existingCelebraty.identityProfile?.image) {
-        const oldImagePath = path.join(
-          __dirname,
-          "../public",
-          existingCelebraty.identityProfile.image.replace(/^\//, ""),
-        );
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
-          console.log("🗑️ Deleted old profile image (replaced with new)");
-        }
-        profileImage = imagePath;
-      }
+      if (imagePath) {
 
+  // Delete old image only if exists
+  if (existingCelebraty.identityProfile?.image) {
+    const oldImagePath = path.join(
+      __dirname,
+      "../public",
+      existingCelebraty.identityProfile.image.replace(/^\//, "")
+    );
+
+    if (fs.existsSync(oldImagePath)) {
+      fs.unlinkSync(oldImagePath);
+      console.log("🗑️ Deleted old profile image");
+    }
+  }
+
+  // Always save new uploaded image
+  profileImage = imagePath;
+}
       if (
         categoryImagePath &&
         existingCelebraty.identityProfile?.categoryImage
@@ -947,6 +955,59 @@ const updateStatus = async (req, res, next) => {
   }
 };
 
+// UPDATE FEATURED STATUS
+
+// ================= BACKEND CONTROLLER =================
+// Category wise max 5 featured allowed
+
+const updateCelebratyFeatured = async (req, res, next) => {
+  try {
+    const { id, featured } = req.body;
+
+    const celebrity = await Celebraty.findById(id);
+
+    if (!celebrity) {
+      return res.status(404).json({
+        success: false,
+        message: "Celebrity not found",
+      });
+    }
+
+    if (Number(featured) === 1) {
+      const professionList = celebrity.professions || [];
+
+      const featuredCount = await Celebraty.countDocuments({
+        _id: { $ne: id },
+        featured: 1,
+        professions: { $in: professionList },
+      });
+
+      if (featuredCount >= 5) {
+        return res.status(400).json({
+          success: false,
+          message: "Only 5 featured celebrities allowed in this category",
+        });
+      }
+    }
+
+    const updated = await Celebraty.findByIdAndUpdate(
+      id,
+      { featured },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        Number(featured) === 1
+          ? "Celebrity featured successfully"
+          : "Featured removed successfully",
+      data: updated,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 /**
  * Delete celebrity
  */
@@ -1056,4 +1117,5 @@ module.exports = {
   getSectionTemplates,
   getSectionMasters,
   getCelebratySectionsByCeleb,
+updateCelebratyFeatured,
 };

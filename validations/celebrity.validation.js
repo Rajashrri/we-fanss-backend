@@ -762,7 +762,17 @@ const updateCelebratySchema = z.object({
       message: "At least one field must be provided for update",
     }),
 });
-
+const updateFeaturedCelebratySchema = z.object({
+  body: z.object({
+    id: z
+      .string({ required_error: "Celebrity ID is required" })
+      .regex(/^[0-9a-fA-F]{24}$/, "Invalid Celebrity ID format"),
+    featured: z.union([z.literal(0), z.literal(1)], {
+      required_error: "Featured is required",
+      invalid_type_error: "Featured must be 0 (Inactive) or 1 (Active)",
+    }),
+  }),
+});
 const updateStatusCelebratySchema = z.object({
   body: z.object({
     id: z
@@ -851,4 +861,5 @@ module.exports = {
   deleteCelebratySchema,
   getAllCelebratySchema,
   getCelebratySectionsByCelebSchema,
+  updateFeaturedCelebratySchema,
 };
