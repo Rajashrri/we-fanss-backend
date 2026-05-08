@@ -239,21 +239,19 @@ const getdata = async (req, res, next) => {
   try {
     const { page, limit, search, status, moderationState } = req.query;
 
-    console.log("🔍 Query Params:", { status, moderationState, search }); // ✅ ADD THIS
-
     let query = {};
 
-    // ✅ ADMIN PANEL: Show ALL moderation states by default
     if (moderationState && moderationState !== "ALL") {
       query.moderationState = moderationState;
     }
 
-    // Search filter
     if (search) {
-      query["identityProfile.name"] = { $regex: search, $options: "i" };
+      query["identityProfile.name"] = {
+        $regex: search,
+        $options: "i",
+      };
     }
 
-    // Root level status filter (Active/Inactive) - if explicitly provided
     if (
       status !== undefined &&
       status !== null &&
@@ -263,24 +261,26 @@ const getdata = async (req, res, next) => {
       query.status = Number(status);
     }
 
-    console.log("🔍 Final Query:", query); // ✅ ADD THIS TO SEE ACTUAL QUERY
-
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
 
-    // ✅ Fetch minimal fields including moderation fields
     const celebrities = await Celebraty.find(query)
       .select({
         "identityProfile.name": 1,
         "identityProfile.image": 1,
-        status: 1, // ✅ Make sure this is root level status
+
+        status: 1,
+        featured: 1, // ✅ ADD THIS
+
         moderationState: 1,
         moderatedBy: 1,
         moderatedAt: 1,
         moderationRemark: 1,
+
         "professionalIdentity.sections": 1,
         "professionalIdentity.professions": 1,
+
         _id: 1,
         createdAt: 1,
         updatedAt: 1,
@@ -293,50 +293,69 @@ const getdata = async (req, res, next) => {
       .limit(limitNum)
       .lean();
 
-    console.log("🔍 Found Celebrities:", celebrities.length); // ✅ ADD THIS
-    console.log("🔍 First Celebrity Status:", celebrities[0]?.status); // ✅ ADD THIS
-
     const total = await Celebraty.countDocuments(query);
 
-    // ✅ Format response with moderation data
     const formattedData = celebrities.map((celeb) => ({
       _id: celeb._id,
       name: celeb.identityProfile?.name || "N/A",
       image: celeb.identityProfile?.image || null,
-      status: celeb.status !== undefined ? celeb.status : 1, // ✅ EXPLICIT CHECK
-      moderationState: celeb.moderationState || "PENDING",
+
+      status:
+        celeb.status !== undefined ? celeb.status : 1,
+
+      featured:
+        celeb.featured !== undefined
+          ? celeb.featured
+          : 0, // ✅ ADD THIS
+
+      moderationState:
+        celeb.moderationState || "PENDING",
+
       moderatedBy: celeb.moderatedBy || null,
       moderatedAt: celeb.moderatedAt || null,
-      moderationRemark: celeb.moderationRemark || null,
-      sections: celeb.professionalIdentity?.sections || [],
-      professions: celeb.professionalIdentity?.professions || [],
+      moderationRemark:
+        celeb.moderationRemark || null,
+
+      sections:
+        celeb.professionalIdentity?.sections || [],
+
+      professions:
+        celeb.professionalIdentity?.professions || [],
+
       createdAt: celeb.createdAt,
       updatedAt: celeb.updatedAt,
     }));
 
-    // ✅ Count by moderation state for dashboard stats
-    const pendingCount = await Celebraty.countDocuments({
-      ...query,
-      moderationState: "PENDING",
-    });
-    const publishedCount = await Celebraty.countDocuments({
-      ...query,
-      moderationState: "PUBLISHED",
-    });
-    const rejectedCount = await Celebraty.countDocuments({
-      ...query,
-      moderationState: "REJECTED",
-    });
+    const pendingCount =
+      await Celebraty.countDocuments({
+        ...query,
+        moderationState: "PENDING",
+      });
+
+    const publishedCount =
+      await Celebraty.countDocuments({
+        ...query,
+        moderationState: "PUBLISHED",
+      });
+
+    const rejectedCount =
+      await Celebraty.countDocuments({
+        ...query,
+        moderationState: "REJECTED",
+      });
 
     return res.status(200).json({
       success: true,
-      message: "Celebrities retrieved successfully",
+      message:
+        "Celebrities retrieved successfully",
       data: formattedData,
       meta: {
         total,
         page: pageNum,
         limit: limitNum,
-        totalPages: Math.ceil(total / limitNum),
+        totalPages: Math.ceil(
+          total / limitNum
+        ),
         moderationStats: {
           pending: pendingCount,
           published: publishedCount,
@@ -345,7 +364,6 @@ const getdata = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error("Get Celebrities Error:", error);
     next(error);
   }
 };
@@ -973,26 +991,31 @@ const updateCelebratyFeatured = async (req, res, next) => {
       });
     }
 
-    if (Number(featured) === 1) {
-      const professionList = celebrity.professions || [];
+    // ✅ correct profession path
+    const professionList =
+      celebrity?.professionalIdentity?.professions || [];
 
+    if (Number(featured) === 1) {
       const featuredCount = await Celebraty.countDocuments({
         _id: { $ne: id },
         featured: 1,
-        professions: { $in: professionList },
+        "professionalIdentity.professions": {
+          $in: professionList,
+        },
       });
 
       if (featuredCount >= 5) {
         return res.status(400).json({
           success: false,
-          message: "Only 5 featured celebrities allowed in this category",
+          message:
+            "Only 5 featured celebrities allowed in this category",
         });
       }
     }
 
     const updated = await Celebraty.findByIdAndUpdate(
       id,
-      { featured },
+      { featured: Number(featured) },
       { new: true }
     );
 
