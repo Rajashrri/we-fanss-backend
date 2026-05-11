@@ -59,9 +59,7 @@ const languageOptions = async (req, res, next) => {
  */
 const sociallist = async (req, res, next) => {
   try {
-    const socialLinks = await SocialLink.find({
-      status: { $in: [1, "1"] },
-    });
+  const socialLinks = await SocialLink.find({ status: 1 });
 
     return res.status(200).json({
       success: true,

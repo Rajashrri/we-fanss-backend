@@ -26,7 +26,6 @@ const {
 const celebrityUpload = createUpload("celebrity");
 
 // ✅ Apply authentication to all routes
-router.use(authenticate);
 
 /**
  * @route   GET /api/celebrity/professionsOptions
@@ -48,6 +47,7 @@ router.get("/sociallist", Celebraty.sociallist);
  * @access  Private
  */
 router.get("/professions", Celebraty.getProfessions);
+router.use(authenticate);
 
 /**
  * @route   GET /api/celebrity/fetchSectionTemplate
