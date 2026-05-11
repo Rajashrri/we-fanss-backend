@@ -127,6 +127,7 @@ router.post(
   celebrityUpload.fields([
     { name: "image", maxCount: 1 },
     { name: "categoryimage", maxCount: 1 }, // ✅ ADD THIS
+    { name: "featuredimage", maxCount: 1 }, // ✅ ADD THIS
 
     { name: "gallery", maxCount: 10 },
   ]),
@@ -149,6 +150,7 @@ router.patch(
   celebrityUpload.fields([
     { name: "image", maxCount: 1 },
     { name: "categoryimage", maxCount: 1 }, // ✅ ADD THIS
+    { name: "featuredimage", maxCount: 1 }, // ✅ ADD THIS
 
     { name: "gallery", maxCount: 10 },
   ]),

@@ -65,7 +65,7 @@ const moveFile = (file, targetFolder, newName) => {
 };
 
 const processCelebrityFiles = (files, celebId) => {
-  const result = { imagePath: null, categoryImagePath: null, galleryPaths: [] };
+  const result = { imagePath: null, categoryImagePath: null, featuredImagePath: null,galleryPaths: [] };
 
   if (!files) return result;
 
@@ -90,7 +90,16 @@ const processCelebrityFiles = (files, celebId) => {
       `${celebId}${ext}`,
     );
   }
+ if (files.featuredimage?.[0]) {
+    const file = files.featuredimage[0];
+    const ext = path.extname(file.originalname);
 
+    result.featuredImagePath = moveFile(
+      file,
+      "celebrity/featuredimage",
+      `${celebId}${ext}`,
+    );
+  }
   // Gallery images
   if (files.gallery?.length) {
     files.gallery.forEach((file, i) => {

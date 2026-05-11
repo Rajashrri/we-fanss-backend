@@ -167,10 +167,11 @@ const addcelebraty = async (req, res, next) => {
         name: identityProfile.name,
         slug,
         image: "",
+        featuredImage: "",
         categoryImage: "",
         gallery: [],
-          shortinfo: identityProfile.shortinfo || "",
-         biography: identityProfile.biography || "",
+        shortinfo: identityProfile.shortinfo || "",
+        biography: identityProfile.biography || "",
       },
 
       personalDetails,
@@ -197,7 +198,7 @@ const addcelebraty = async (req, res, next) => {
     // =========================
     // IMPORTANT FIX
     // =========================
-    const { imagePath, categoryImagePath, galleryPaths } =
+    const { imagePath, featuredImagePath, categoryImagePath, galleryPaths } =
       processCelebrityFiles(req.files, celebId);
 
     const updateData = {};
@@ -211,7 +212,9 @@ const addcelebraty = async (req, res, next) => {
     if (categoryImagePath) {
       updateData["identityProfile.categoryImage"] = categoryImagePath;
     }
-
+    if (featuredImagePath) {
+      updateData["identityProfile.featuredImage"] = featuredImagePath;
+    }
     // /celebrity/gallery/id-1.webp
     if (galleryPaths.length > 0) {
       updateData["identityProfile.gallery"] = galleryPaths;
@@ -300,62 +303,48 @@ const getdata = async (req, res, next) => {
       name: celeb.identityProfile?.name || "N/A",
       image: celeb.identityProfile?.image || null,
 
-      status:
-        celeb.status !== undefined ? celeb.status : 1,
+      status: celeb.status !== undefined ? celeb.status : 1,
 
-      featured:
-        celeb.featured !== undefined
-          ? celeb.featured
-          : 0, // ✅ ADD THIS
+      featured: celeb.featured !== undefined ? celeb.featured : 0, // ✅ ADD THIS
 
-      moderationState:
-        celeb.moderationState || "PENDING",
+      moderationState: celeb.moderationState || "PENDING",
 
       moderatedBy: celeb.moderatedBy || null,
       moderatedAt: celeb.moderatedAt || null,
-      moderationRemark:
-        celeb.moderationRemark || null,
+      moderationRemark: celeb.moderationRemark || null,
 
-      sections:
-        celeb.professionalIdentity?.sections || [],
+      sections: celeb.professionalIdentity?.sections || [],
 
-      professions:
-        celeb.professionalIdentity?.professions || [],
+      professions: celeb.professionalIdentity?.professions || [],
 
       createdAt: celeb.createdAt,
       updatedAt: celeb.updatedAt,
     }));
 
-    const pendingCount =
-      await Celebraty.countDocuments({
-        ...query,
-        moderationState: "PENDING",
-      });
+    const pendingCount = await Celebraty.countDocuments({
+      ...query,
+      moderationState: "PENDING",
+    });
 
-    const publishedCount =
-      await Celebraty.countDocuments({
-        ...query,
-        moderationState: "PUBLISHED",
-      });
+    const publishedCount = await Celebraty.countDocuments({
+      ...query,
+      moderationState: "PUBLISHED",
+    });
 
-    const rejectedCount =
-      await Celebraty.countDocuments({
-        ...query,
-        moderationState: "REJECTED",
-      });
+    const rejectedCount = await Celebraty.countDocuments({
+      ...query,
+      moderationState: "REJECTED",
+    });
 
     return res.status(200).json({
       success: true,
-      message:
-        "Celebrities retrieved successfully",
+      message: "Celebrities retrieved successfully",
       data: formattedData,
       meta: {
         total,
         page: pageNum,
         limit: limitNum,
-        totalPages: Math.ceil(
-          total / limitNum
-        ),
+        totalPages: Math.ceil(total / limitNum),
         moderationStats: {
           pending: pendingCount,
           published: publishedCount,
@@ -431,6 +420,8 @@ const updatecelebraty = async (req, res, next) => {
       oldGallery,
       removeOldImage,
       removeOldCategoryImage, // ✅ ADD
+            removeOldFeaturedImage, // ✅ ADD
+
     } = req.body;
 
     // ==================== FIND EXISTING CELEBRITY ====================
@@ -513,6 +504,7 @@ const updatecelebraty = async (req, res, next) => {
     let profileImage = existingCelebraty.identityProfile?.image;
 
     let categoryImage = existingCelebraty.identityProfile?.categoryImage || "";
+    let featuredImage = existingCelebraty.identityProfile?.featuredImage || "";
 
     let mergedGallery = [];
 
@@ -569,15 +561,30 @@ const updatecelebraty = async (req, res, next) => {
 
       categoryImage = "";
     }
+   if (removeOldFeaturedImage === true || removeOldFeaturedImage === "true") {
+      if (existingCelebraty.identityProfile?.featuredImage) {
+        const oldFeaturedPath = path.join(
+          __dirname,
+          "../public",
+          existingCelebraty.identityProfile.featuredImage.replace(/^\//, ""),
+        );
 
+        if (fs.existsSync(oldFeaturedPath)) {
+          fs.unlinkSync(oldFeaturedPath);
+          console.log("🗑️ Deleted old category image");
+        }
+      }
+
+      featuredImage = "";
+    }
     // ✅ STEP 3: Process new uploaded files
     if (
       req.files &&
-      (req.files.image || req.files.categoryimage || req.files.gallery)
+      (req.files.image || req.files.categoryimage || req.files.featuredimage || req.files.gallery)
     ) {
       console.log("📤 Processing new files...");
 
-      const { imagePath, categoryImagePath, galleryPaths } =
+      const { imagePath, categoryImagePath, featuredImagePath,galleryPaths } =
         processCelebrityFiles(req.files, id);
 
       console.log("📸 New profile image:", imagePath);
@@ -585,28 +592,26 @@ const updatecelebraty = async (req, res, next) => {
 
       // Delete old profile image if new one is uploaded
       if (imagePath) {
+        // Delete old image only if exists
+        if (existingCelebraty.identityProfile?.image) {
+          const oldImagePath = path.join(
+            __dirname,
+            "../public",
+            existingCelebraty.identityProfile.image.replace(/^\//, ""),
+          );
 
-  // Delete old image only if exists
-  if (existingCelebraty.identityProfile?.image) {
-    const oldImagePath = path.join(
-      __dirname,
-      "../public",
-      existingCelebraty.identityProfile.image.replace(/^\//, "")
-    );
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+            console.log("🗑️ Deleted old profile image");
+          }
+        }
 
-    if (fs.existsSync(oldImagePath)) {
-      fs.unlinkSync(oldImagePath);
-      console.log("🗑️ Deleted old profile image");
-    }
-  }
-
-  // Always save new uploaded image
-  profileImage = imagePath;
-}
-      if (
-        categoryImagePath &&
-        existingCelebraty.identityProfile?.categoryImage
-      ) {
+        // Always save new uploaded image
+        profileImage = imagePath;
+      }
+      if ( categoryImagePath &&
+        existingCelebraty.identityProfile?.categoryImage )
+         {
         const oldCategoryPath = path.join(
           __dirname,
           "../public",
@@ -618,6 +623,30 @@ const updatecelebraty = async (req, res, next) => {
         }
         categoryImage = categoryImagePath;
       }
+
+
+ if (featuredImagePath) {
+
+  // old image delete if exists
+  if (existingCelebraty.identityProfile?.featuredImage) {
+    const oldFeaturedPath = path.join(
+      __dirname,
+      "../public",
+      existingCelebraty.identityProfile.featuredImage.replace(/^\//, "")
+    );
+
+    if (fs.existsSync(oldFeaturedPath)) {
+      fs.unlinkSync(oldFeaturedPath);
+      console.log("🗑️ Old featured image deleted");
+    }
+  }
+
+  // always save new image
+  featuredImage = featuredImagePath;
+
+  console.log("✅ New featured image saved:", featuredImage);
+}
+
 
       // ✅ STEP 4: Append new gallery images to existing ones
       if (galleryPaths.length > 0) {
@@ -698,6 +727,8 @@ const updatecelebraty = async (req, res, next) => {
       updateFields["identityProfile.image"] = profileImage;
       updateFields["identityProfile.gallery"] = mergedGallery;
       updateFields["identityProfile.categoryImage"] = categoryImage; // ✅ ADD
+            updateFields["identityProfile.featuredImage"] = featuredImage; // ✅ ADD
+
     }
 
     // B) Personal Details
@@ -992,8 +1023,7 @@ const updateCelebratyFeatured = async (req, res, next) => {
     }
 
     // ✅ correct profession path
-    const professionList =
-      celebrity?.professionalIdentity?.professions || [];
+    const professionList = celebrity?.professionalIdentity?.professions || [];
 
     if (Number(featured) === 1) {
       const featuredCount = await Celebraty.countDocuments({
@@ -1007,8 +1037,7 @@ const updateCelebratyFeatured = async (req, res, next) => {
       if (featuredCount >= 5) {
         return res.status(400).json({
           success: false,
-          message:
-            "Only 5 featured celebrities allowed in this category",
+          message: "Only 5 featured celebrities allowed in this category",
         });
       }
     }
@@ -1016,7 +1045,7 @@ const updateCelebratyFeatured = async (req, res, next) => {
     const updated = await Celebraty.findByIdAndUpdate(
       id,
       { featured: Number(featured) },
-      { new: true }
+      { new: true },
     );
 
     return res.status(200).json({
@@ -1140,5 +1169,5 @@ module.exports = {
   getSectionTemplates,
   getSectionMasters,
   getCelebratySectionsByCeleb,
-updateCelebratyFeatured,
+  updateCelebratyFeatured,
 };

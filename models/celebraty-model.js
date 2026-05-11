@@ -1,5 +1,5 @@
 const { Schema, model } = require("mongoose");
-const {moderationFields} = require("../models/schema/moderation-schema")
+const { moderationFields } = require("../models/schema/moderation-schema");
 const celebratySchema = new Schema(
   {
     identityProfile: {
@@ -39,7 +39,8 @@ const celebratySchema = new Schema(
         type: String,
         trim: true,
       },
-            categoryImage: { type: String, default: "" },
+      categoryImage: { type: String, default: "" },
+      featuredImage: { type: String, default: "" },
 
       gallery: [
         {
@@ -64,8 +65,8 @@ const celebratySchema = new Schema(
         default: "Draft",
       },
     },
- featured: {
-         type: Number,
+    featured: {
+      type: Number,
       enum: [0, 1],
       default: 0,
       index: true,
