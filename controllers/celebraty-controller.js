@@ -1,16 +1,17 @@
 const { Celebraty } = require("../models/celebraty-model");
 const { Language } = require("../models/language-model");
-const Professionalmaster = require("../models/professionalmaster-model");
 const { SocialLink } = require("../models/sociallink-model");
-const { Moviev } = require("../models/moviev-model");
+const { Movie } = require("../models/moviev-model");
 const { Series } = require("../models/series-model");
 const { Positions } = require("../models/positions-model");
 const { Election } = require("../models/election-model");
-const Timeline = require("../models/timeline-model");
-const { Triviaentries } = require("../models/triviaentries-model");
 const { SectionTemplate } = require("../models/sectiontemplate-model");
+const Triviaentries = require("../models/triviaentries-model");
+const Professionalmaster = require("../models/professionalmaster-model");
+const Timeline = require("../models/timeline-model");
+
 const SectionMaster = require("../models/sectionmaster-model");
-const CelebratySection = require("../models/celebratysection-model");
+const CelebratySectionModel = require("../models/celebratysection-model");
 const createHttpError = require("http-errors");
 const generateSlug = require("../utils/helper/slugHelper");
 const {
@@ -19,7 +20,8 @@ const {
 const fs = require("fs");
 const path = require("path");
 const { PROJECT_ROOT } = require("../utils/upload");
-
+const cloudinary = require("../utils/cloudinary");
+const deleteFromCloudinary = require("../utils/cloudinaryDelete");
 /**
  * Get profession options for dropdown
  */
@@ -59,7 +61,7 @@ const languageOptions = async (req, res, next) => {
  */
 const sociallist = async (req, res, next) => {
   try {
-  const socialLinks = await SocialLink.find({ status: 1 });
+    const socialLinks = await SocialLink.find({ status: 1 });
 
     return res.status(200).json({
       success: true,
@@ -198,7 +200,7 @@ const addcelebraty = async (req, res, next) => {
     // IMPORTANT FIX
     // =========================
     const { imagePath, featuredImagePath, categoryImagePath, galleryPaths } =
-      processCelebrityFiles(req.files, celebId);
+      await processCelebrityFiles(req.files, celebId);
 
     const updateData = {};
 
@@ -215,7 +217,7 @@ const addcelebraty = async (req, res, next) => {
       updateData["identityProfile.featuredImage"] = featuredImagePath;
     }
     // /celebrity/gallery/id-1.webp
-    if (galleryPaths.length > 0) {
+    if (galleryPaths && galleryPaths.length > 0) {
       updateData["identityProfile.gallery"] = galleryPaths;
     }
 
@@ -398,6 +400,7 @@ const getcelebratyByid = async (req, res, next) => {
   }
 };
 
+
 const updatecelebraty = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -500,161 +503,75 @@ const updatecelebraty = async (req, res, next) => {
     }
 
     // ==================== HANDLE FILE UPLOADS ====================
-    let profileImage = existingCelebraty.identityProfile?.image;
-
+ 
+    // ================= IMAGE VARIABLES =================
+    let profileImage = existingCelebraty.identityProfile?.image || "";
     let categoryImage = existingCelebraty.identityProfile?.categoryImage || "";
     let featuredImage = existingCelebraty.identityProfile?.featuredImage || "";
 
     let mergedGallery = [];
 
-    // ✅ STEP 1: Parse old gallery properly
-    console.log("📦 oldGallery received:", oldGallery);
-    console.log("📦 oldGallery type:", typeof oldGallery);
-
+    // ================= OLD GALLERY =================
     if (oldGallery) {
-      // ✅ Handle both string and array (after parseNestedFormData)
       if (typeof oldGallery === "string") {
-        try {
-          mergedGallery = JSON.parse(oldGallery);
-          console.log("✅ Parsed oldGallery from string:", mergedGallery);
-        } catch (error) {
-          console.error("❌ Failed to parse oldGallery:", error);
-          mergedGallery = [];
-        }
+        mergedGallery = JSON.parse(oldGallery);
       } else if (Array.isArray(oldGallery)) {
         mergedGallery = oldGallery;
-        console.log("✅ oldGallery already array:", mergedGallery);
-      } else {
-        mergedGallery = [];
       }
     }
 
-    // ✅ STEP 2: Handle profile image deletion/update
+    // ================= DELETE OLD IMAGES =================
+
     if (removeOldImage === true || removeOldImage === "true") {
-      if (existingCelebraty.identityProfile?.image) {
-        const oldImagePath = path.join(
-          __dirname,
-          "../public",
-          existingCelebraty.identityProfile.image.replace(/^\//, ""),
-        );
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
-          console.log("🗑️ Deleted old profile image");
-        }
-      }
+      await deleteFromCloudinary(profileImage);
       profileImage = "";
     }
+
     if (removeOldCategoryImage === true || removeOldCategoryImage === "true") {
-      if (existingCelebraty.identityProfile?.categoryImage) {
-        const oldCategoryPath = path.join(
-          __dirname,
-          "../public",
-          existingCelebraty.identityProfile.categoryImage.replace(/^\//, ""),
-        );
-
-        if (fs.existsSync(oldCategoryPath)) {
-          fs.unlinkSync(oldCategoryPath);
-          console.log("🗑️ Deleted old category image");
-        }
-      }
-
+      await deleteFromCloudinary(categoryImage);
       categoryImage = "";
     }
-   if (removeOldFeaturedImage === true || removeOldFeaturedImage === "true") {
-      if (existingCelebraty.identityProfile?.featuredImage) {
-        const oldFeaturedPath = path.join(
-          __dirname,
-          "../public",
-          existingCelebraty.identityProfile.featuredImage.replace(/^\//, ""),
-        );
 
-        if (fs.existsSync(oldFeaturedPath)) {
-          fs.unlinkSync(oldFeaturedPath);
-          console.log("🗑️ Deleted old category image");
-        }
-      }
-
+    if (removeOldFeaturedImage === true || removeOldFeaturedImage === "true") {
+      await deleteFromCloudinary(featuredImage);
       featuredImage = "";
     }
-    // ✅ STEP 3: Process new uploaded files
+
+    // ================= NEW FILE UPLOAD =================
     if (
       req.files &&
-      (req.files.image || req.files.categoryimage || req.files.featuredimage || req.files.gallery)
+      (req.files.image ||
+        req.files.categoryimage ||
+        req.files.featuredimage ||
+        req.files.gallery)
     ) {
-      console.log("📤 Processing new files...");
+      const { imagePath, categoryImagePath, featuredImagePath, galleryPaths } =
+        await processCelebrityFiles(req.files, id);
 
-      const { imagePath, categoryImagePath, featuredImagePath,galleryPaths } =
-        processCelebrityFiles(req.files, id);
-
-      console.log("📸 New profile image:", imagePath);
-      console.log("🖼️ New gallery images:", galleryPaths);
-
-      // Delete old profile image if new one is uploaded
+      // Profile Image
       if (imagePath) {
-        // Delete old image only if exists
-        if (existingCelebraty.identityProfile?.image) {
-          const oldImagePath = path.join(
-            __dirname,
-            "../public",
-            existingCelebraty.identityProfile.image.replace(/^\//, ""),
-          );
-
-          if (fs.existsSync(oldImagePath)) {
-            fs.unlinkSync(oldImagePath);
-            console.log("🗑️ Deleted old profile image");
-          }
-        }
-
-        // Always save new uploaded image
+        await deleteFromCloudinary(profileImage);
         profileImage = imagePath;
       }
-      if ( categoryImagePath &&
-        existingCelebraty.identityProfile?.categoryImage )
-         {
-        const oldCategoryPath = path.join(
-          __dirname,
-          "../public",
-          existingCelebraty.identityProfile.categoryImage.replace(/^\//, ""),
-        );
-        if (fs.existsSync(oldCategoryPath)) {
-          fs.unlinkSync(oldCategoryPath);
-          console.log("🗑️ Deleted old profile image (replaced with new)");
-        }
+
+      // Category Image
+      if (categoryImagePath) {
+        await deleteFromCloudinary(categoryImage);
         categoryImage = categoryImagePath;
       }
 
+      // Featured Image
+      if (featuredImagePath) {
+        await deleteFromCloudinary(featuredImage);
+        featuredImage = featuredImagePath;
+      }
 
- if (featuredImagePath) {
-
-  // old image delete if exists
-  if (existingCelebraty.identityProfile?.featuredImage) {
-    const oldFeaturedPath = path.join(
-      __dirname,
-      "../public",
-      existingCelebraty.identityProfile.featuredImage.replace(/^\//, "")
-    );
-
-    if (fs.existsSync(oldFeaturedPath)) {
-      fs.unlinkSync(oldFeaturedPath);
-      console.log("🗑️ Old featured image deleted");
-    }
-  }
-
-  // always save new image
-  featuredImage = featuredImagePath;
-
-  console.log("✅ New featured image saved:", featuredImage);
-}
-
-
-      // ✅ STEP 4: Append new gallery images to existing ones
-      if (galleryPaths.length > 0) {
+      // Gallery Merge
+      if (galleryPaths && galleryPaths.length > 0) {
         mergedGallery = [...mergedGallery, ...galleryPaths];
-        console.log("✅ Merged gallery (old + new):", mergedGallery);
       }
     }
 
-    console.log("📊 Final gallery to save:", mergedGallery);
 
     // ==================== PARSE JSON FIELDS ====================
     const parsedProfessions =
@@ -968,6 +885,161 @@ const updatecelebraty = async (req, res, next) => {
   }
 };
 
+
+// const updatecelebraty = async (req, res, next) => {
+//   try {
+//     const { id } = req.params;
+
+//     const {
+//       identityProfile,
+//       personalDetails,
+//       lifeStatus,
+//       familyRelationships,
+//       professionalIdentity,
+//       locationPresence,
+//       publicAttributes,
+//       socialLinks,
+//       seoMetadata,
+//       adminControls,
+//       status,
+//       oldGallery,
+//       removeOldImage,
+//       removeOldCategoryImage,
+//       removeOldFeaturedImage,
+//     } = req.body;
+
+//     const existingCelebraty = await Celebraty.findById(id);
+
+//     if (!existingCelebraty) {
+//       throw createHttpError(404, "Celebrity not found");
+//     }
+
+//     // ================= IMAGE VARIABLES =================
+//     let profileImage = existingCelebraty.identityProfile?.image || "";
+//     let categoryImage = existingCelebraty.identityProfile?.categoryImage || "";
+//     let featuredImage = existingCelebraty.identityProfile?.featuredImage || "";
+
+//     let mergedGallery = [];
+
+//     // ================= OLD GALLERY =================
+//     if (oldGallery) {
+//       if (typeof oldGallery === "string") {
+//         mergedGallery = JSON.parse(oldGallery);
+//       } else if (Array.isArray(oldGallery)) {
+//         mergedGallery = oldGallery;
+//       }
+//     }
+
+//     // ================= DELETE OLD IMAGES =================
+
+//     if (removeOldImage === true || removeOldImage === "true") {
+//       await deleteFromCloudinary(profileImage);
+//       profileImage = "";
+//     }
+
+//     if (removeOldCategoryImage === true || removeOldCategoryImage === "true") {
+//       await deleteFromCloudinary(categoryImage);
+//       categoryImage = "";
+//     }
+
+//     if (removeOldFeaturedImage === true || removeOldFeaturedImage === "true") {
+//       await deleteFromCloudinary(featuredImage);
+//       featuredImage = "";
+//     }
+
+//     // ================= NEW FILE UPLOAD =================
+//     if (
+//       req.files &&
+//       (req.files.image ||
+//         req.files.categoryimage ||
+//         req.files.featuredimage ||
+//         req.files.gallery)
+//     ) {
+//       const { imagePath, categoryImagePath, featuredImagePath, galleryPaths } =
+//         await processCelebrityFiles(req.files, id);
+
+//       // Profile Image
+//       if (imagePath) {
+//         await deleteFromCloudinary(profileImage);
+//         profileImage = imagePath;
+//       }
+
+//       // Category Image
+//       if (categoryImagePath) {
+//         await deleteFromCloudinary(categoryImage);
+//         categoryImage = categoryImagePath;
+//       }
+
+//       // Featured Image
+//       if (featuredImagePath) {
+//         await deleteFromCloudinary(featuredImage);
+//         featuredImage = featuredImagePath;
+//       }
+
+//       // Gallery Merge
+//       if (galleryPaths && galleryPaths.length > 0) {
+//         mergedGallery = [...mergedGallery, ...galleryPaths];
+//       }
+//     }
+
+//     // ================= UPDATE DATA =================
+//     const updateFields = {
+//       "identityProfile.image": profileImage,
+//       "identityProfile.categoryImage": categoryImage,
+//       "identityProfile.featuredImage": featuredImage,
+//       "identityProfile.gallery": mergedGallery,
+//       "auditTrail.updatedBy": req.user?.userId,
+//       moderationState: "PENDING",
+//       moderatedBy: null,
+//       moderatedAt: null,
+//       moderationRemark: null,
+//     };
+
+//     // Name
+//     if (identityProfile?.name) {
+//       updateFields["identityProfile.name"] = identityProfile.name;
+//     }
+
+//     if (identityProfile?.slug) {
+//       updateFields["identityProfile.slug"] = identityProfile.slug;
+//     }
+
+//     if (identityProfile?.shortinfo) {
+//       updateFields["identityProfile.shortinfo"] = identityProfile.shortinfo;
+//     }
+
+//     if (identityProfile?.biography) {
+//       updateFields["identityProfile.biography"] = identityProfile.biography;
+//     }
+
+//     if (status !== undefined) {
+//       updateFields["status"] = status;
+//     }
+
+//     // ================= UPDATE =================
+//     const updatedCelebraty = await Celebraty.findByIdAndUpdate(
+//       id,
+//       { $set: updateFields },
+//       { new: true, runValidators: true },
+//     )
+//       .populate("professionalIdentity.professions", "name")
+//       .populate("professionalIdentity.languages", "name")
+//       .populate("professionalIdentity.sections", "name")
+//       .populate("professionalIdentity.primaryProfession", "name")
+//       .populate("professionalIdentity.primaryLanguage", "name")
+//       .populate("socialLinks.platform", "name");
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Celebrity updated successfully",
+//       data: updatedCelebraty,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error in updatecelebraty:", error);
+//     next(error);
+//   }
+// };
+
 /**
  * Update celebrity status (Active/Inactive at root level)
  */
@@ -1067,51 +1139,56 @@ const deletecelebraty = async (req, res, next) => {
     const { id } = req.params;
 
     const celebrity = await Celebraty.findById(id);
+
     if (!celebrity) {
       throw createHttpError(404, "Celebrity not found");
     }
 
-    // Delete related data
-    const deletedMovies = await Moviev.deleteMany({ celebrityId: id });
-    const deletedSeries = await Series.deleteMany({ celebrityId: id });
+    // ================= DELETE RELATED TABLE DATA =================
+    const deletedMovies = await Movie.deleteMany({ celebrityId: id });
+    const deletedSeries = await  Series.deleteMany({ celebrityId: id });
     const deletedElection = await Election.deleteMany({ celebrityId: id });
     const deletedPositions = await Positions.deleteMany({ celebrityId: id });
-    const deletedTimeline = await Timeline.deleteMany({ celebrityId: id });
     const deletedTrivia = await Triviaentries.deleteMany({ celebrityId: id });
-    const deletedSections = await CelebratySection.deleteMany({
-      celebratyId: id,
-    });
+    const deletedSections = await CelebratySectionModel.deleteMany({celebratyId: id });
+        const deletedTimeline = await Timeline.deleteMany({ celebrityId: id });
 
-    // Delete celebrity images
+
+    // ================= DELETE MAIN IMAGE =================
     if (celebrity.identityProfile?.image) {
-      const imagePath = path.join(
-        __dirname,
-        "../public/celebrity",
-        celebrity.identityProfile.image,
-      );
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
+      await deleteFromCloudinary(celebrity.identityProfile.image);
     }
 
+    // ================= DELETE CATEGORY IMAGE =================
+    if (celebrity.identityProfile?.categoryImage) {
+      await deleteFromCloudinary(
+        celebrity.identityProfile.categoryImage
+      );
+    }
+
+    // ================= DELETE FEATURED IMAGE =================
+    if (celebrity.identityProfile?.featuredImage) {
+      await deleteFromCloudinary(
+        celebrity.identityProfile.featuredImage
+      );
+    }
+
+    // ================= DELETE GALLERY =================
     if (
       celebrity.identityProfile?.gallery &&
       celebrity.identityProfile.gallery.length > 0
     ) {
-      celebrity.identityProfile.gallery.forEach((img) => {
-        const imgPath = path.join(__dirname, "../public/celebrity", img);
-        if (fs.existsSync(imgPath)) {
-          fs.unlinkSync(imgPath);
-        }
-      });
+      for (const img of celebrity.identityProfile.gallery) {
+        await deleteFromCloudinary(img);
+      }
     }
 
-    // Delete the celebrity
+    // ================= DELETE CELEBRITY =================
     await Celebraty.findByIdAndDelete(id);
 
     return res.status(200).json({
       success: true,
-      message: "Celebrity and related data deleted successfully",
+      message: "Celebrity deleted successfully",
       data: {
         deletedMoviesCount: deletedMovies.deletedCount,
         deletedSeriesCount: deletedSeries.deletedCount,
@@ -1123,6 +1200,7 @@ const deletecelebraty = async (req, res, next) => {
       },
     });
   } catch (error) {
+    console.log(error);
     next(error);
   }
 };
