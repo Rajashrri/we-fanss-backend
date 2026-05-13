@@ -192,7 +192,8 @@ const gettimelineByid = async (req, res, next) => {
 const updatetimeline = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, slug, description, fromYear, toYear } = req.body;
+    const { title, slug, description,  from_year,
+  to_year } = req.body;
 
     const existingTimeline = await Timeline.findById(id);
     if (!existingTimeline) {
@@ -225,9 +226,8 @@ const updatetimeline = async (req, res, next) => {
     if (title !== undefined) updateFields.title = title.trim();
     if (slug !== undefined) updateFields.slug = slug;
     if (description !== undefined) updateFields.description = description.trim();
-    if (fromYear !== undefined) updateFields.fromYear = fromYear;
-    if (toYear !== undefined) updateFields.toYear = toYear;
-
+   updateFields.fromYear = fromYear || from_year;
+updateFields.toYear = toYear || to_year;
     const newImageFile =
       (req.files && req.files.media && req.files.media[0]) || req.file;
 
