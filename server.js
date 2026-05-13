@@ -92,7 +92,7 @@ app.use('/template',express.static(path.join(__dirname , 'public/template')))
 app.use('/celebrity', express.static(path.join(__dirname, 'public/celebrity')));
 app.use('/timeline', express.static(path.join(__dirname, 'public/timeline')));
 app.use('/triviaentries', express.static(path.join(__dirname, 'public/triviaentries')));
-app.use('/moviev', express.static(path.join(__dirname, 'public/moviev')));
+app.use('/movies', express.static(path.join(__dirname, 'public/movies')));
 app.use('/series', express.static(path.join(__dirname, 'public/series')));
 app.use('/election', express.static(path.join(__dirname, 'public/election')));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
