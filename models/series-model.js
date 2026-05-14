@@ -30,7 +30,12 @@ const seriesSchema = new Schema({
 
   // 🖼️ Media
   image: { type: String },
-
+  
+  imagebg: {
+      type: String,
+      trim: true,
+      maxlength: [500, "Image path cannot exceed 500 characters"],
+    },
   // 🧩 Admin Info
   createdBy: { type: String },
   createdAt: { type: String },

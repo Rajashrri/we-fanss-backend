@@ -28,7 +28,6 @@ const electionSchema = new Schema({
   sort: { type: String },
   statusnew: { type: String},
   status: { type: String, default: "1" },
-  
 
   // 🌐 Relations
   celebrityId: { type: String, required: true },

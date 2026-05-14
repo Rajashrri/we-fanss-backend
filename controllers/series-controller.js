@@ -79,10 +79,7 @@ const addSeries = async (req, res) => {
     // Single poster/thumbnail
     const profileImage = req.files?.image?.[0]?.filename || null;
 
-    // Gallery images
-    const galleryImages = req.files?.gallery
-      ? req.files.gallery.map((file) => file.filename)
-      : [];
+    const bgImage = req.files?.imagebg?.[0]?.filename || null;
 
     const now = new Date();
     const createdAt = formatDateDMY(now);
@@ -143,6 +140,7 @@ const addSeries = async (req, res) => {
       genre: parsedGenre, // ✅ save as array
       celebrityId,
       image: profileImage,
+      imagebg: bgImage,
       watchLinks: parsedWatchLinks,
       seasons: parsedSeasons,
       createdBy,
@@ -155,10 +153,10 @@ const addSeries = async (req, res) => {
     });
 
     return res.status(201).json({
-  success: true,
-  message: "Series added successfully",
-  data: newSeries,
-});
+      success: true,
+      message: "Series added successfully",
+      data: newSeries,
+    });
   } catch (error) {
     console.error("Add Series Error:", error);
     res
@@ -182,7 +180,7 @@ const updateStatus = async (req, res) => {
       },
       {
         new: true,
-      }
+      },
     );
     res.status(201).json({
       msg: "Updated Successfully",
@@ -207,6 +205,8 @@ const updateSeries = async (req, res) => {
       platform,
       notes,
       old_image,
+            old_imagebg,
+
       watchLinks,
       seasons,
       statusseries,
@@ -221,6 +221,7 @@ const updateSeries = async (req, res) => {
     const profileImage = req.files?.image?.[0]
       ? req.files.image[0].filename
       : null;
+    const bgImage = req.files?.imagebg?.[0]?.filename || null;
 
     // ✅ Parse languages safely
     let parsedLanguages = [];
@@ -258,29 +259,27 @@ const updateSeries = async (req, res) => {
 
     // ✅ Sanitize each element
     parsedWatchLinks = parsedWatchLinks.filter(
-      (wl) => wl && typeof wl === "object" && !Array.isArray(wl)
+      (wl) => wl && typeof wl === "object" && !Array.isArray(wl),
     );
 
-
     // ✅ Parse genre safely
-let parsedGenre = [];
-try {
-  if (typeof genre === "string") {
-    if (genre.trim().startsWith("[") && genre.trim().endsWith("]")) {
-      parsedGenre = JSON.parse(genre);
-    } else {
+    let parsedGenre = [];
+    try {
+      if (typeof genre === "string") {
+        if (genre.trim().startsWith("[") && genre.trim().endsWith("]")) {
+          parsedGenre = JSON.parse(genre);
+        } else {
+          parsedGenre = [];
+        }
+      } else if (Array.isArray(genre)) {
+        parsedGenre = genre;
+      } else if (genre && typeof genre === "object") {
+        parsedGenre = [genre];
+      }
+    } catch (err) {
+      console.error("Invalid genre JSON:", err);
       parsedGenre = [];
     }
-  } else if (Array.isArray(genre)) {
-    parsedGenre = genre;
-  } else if (genre && typeof genre === "object") {
-    parsedGenre = [genre];
-  }
-} catch (err) {
-  console.error("Invalid genre JSON:", err);
-  parsedGenre = [];
-}
-
 
     // ✅ Parse watchLinks safely
     let parsedseasons = [];
@@ -303,37 +302,41 @@ try {
 
     // ✅ Sanitize each element
     parsedseasons = parsedseasons.filter(
-      (wl) => wl && typeof wl === "object" && !Array.isArray(wl)
+      (wl) => wl && typeof wl === "object" && !Array.isArray(wl),
     );
 
-   const updateData = {
-  title,
-  type,
-  start_year,
-  role,
-  role_type,
-  languages: parsedLanguages,
-  director,
-  end_year,
-  platform,
-  genre: parsedGenre, // ✅ use parsedGenre here
-  notes,
-  statusseries,
-  sort,
-  statusnew,
-  watchLinks: parsedWatchLinks,
-  seasons: parsedseasons,
-  updatedAt: new Date(),
-};
-
+    const updateData = {
+      title,
+      type,
+      start_year,
+      role,
+      role_type,
+      languages: parsedLanguages,
+      director,
+      end_year,
+      platform,
+      genre: parsedGenre, // ✅ use parsedGenre here
+      notes,
+      statusseries,
+      sort,
+      statusnew,
+      watchLinks: parsedWatchLinks,
+      seasons: parsedseasons,
+      updatedAt: new Date(),
+    };
 
     if (profileImage) updateData.image = profileImage;
     else if (old_image) updateData.image = old_image;
 
+
+    if (bgImage) updateData.imagebg = bgImage;
+    else if (old_imagebg) updateData.imagebg = old_imagebg;
+
+ 
     const result = await Series.findByIdAndUpdate(
       id,
       { $set: updateData },
-      { new: true }
+      { new: true },
     );
 
     if (!result) {
@@ -341,11 +344,10 @@ try {
     }
 
     return res.status(200).json({
-  success: true,
-  message: "Series updated successfully",
-  data: result,
-});
-
+      success: true,
+      message: "Series updated successfully",
+      data: result,
+    });
   } catch (error) {
     console.error("Update Series Error:", error);
     res.status(500).json({ status: false, msg: "Server error", error });

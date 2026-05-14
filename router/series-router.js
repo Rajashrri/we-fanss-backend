@@ -7,7 +7,7 @@ const path = require("path");
 const bodyparser = require("body-parser");
 
 router.use(bodyparser.urlencoded({ extended: true }));
-router.use(express.static(path.resolve(__dirname, 'public')));
+router.use(express.static(path.resolve(__dirname, "public")));
 
 // Multer setup for file upload
 const storage = multer.diskStorage({
@@ -18,7 +18,7 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
+    cb(null, Date.now() + "-" + file.originalname);
   },
 });
 
@@ -28,14 +28,14 @@ const upload = multer({ storage: storage });
 
 router.get("/languageOptions", Series.languageOptions);
 
-
 // In router file
 router.post(
   "/addseries",
   upload.fields([
     { name: "image", maxCount: 1 },
+    { name: "imagebg", maxCount: 1 },
   ]),
-  Series.addSeries
+  Series.addSeries,
 );
 router.get("/getSeriesByCelebrity/:celebrityId", Series.getSeriesByCelebrity);
 router.get("/GenreMasterOptions", Series.GenreMasterOptions);
@@ -47,8 +47,9 @@ router.patch(
   "/updateseries/:id",
   upload.fields([
     { name: "image", maxCount: 1 },
+    { name: "imagebg", maxCount: 1 },
   ]),
-  Series.updateSeries
+  Series.updateSeries,
 );
 
 module.exports = router;
