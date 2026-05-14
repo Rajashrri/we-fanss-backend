@@ -23,7 +23,7 @@ const movieSchema = new Schema(
       type: String,
       trim: true,
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           return !v || /^\d{4}$/.test(v);
         },
         message: "Release year must be a 4-digit year (e.g., 2024)",
@@ -34,7 +34,7 @@ const movieSchema = new Schema(
       type: String,
       trim: true,
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           return !v || /^\d{4}-\d{2}-\d{2}$/.test(v);
         },
         message: "Release date must be in YYYY-MM-DD format",
@@ -58,7 +58,14 @@ const movieSchema = new Schema(
       type: String,
       trim: true,
       enum: {
-        values: ["Lead", "Supporting", "Cameo", "Special Appearance", "Voice", ""],
+        values: [
+          "Lead",
+          "Supporting",
+          "Cameo",
+          "Special Appearance",
+          "Voice",
+          "",
+        ],
         message: "{VALUE} is not a valid role type",
       },
     },
@@ -67,7 +74,7 @@ const movieSchema = new Schema(
       type: String,
       trim: true,
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           return !v || /^\d+$/.test(v);
         },
         message: "Sort order must be a number",
@@ -122,8 +129,13 @@ const movieSchema = new Schema(
       type: String,
       trim: true,
       validate: {
-        validator: function(v) {
-          return !v || (/^\d+(\.\d{1,2})?$/.test(v) && parseFloat(v) >= 0 && parseFloat(v) <= 10);
+        validator: function (v) {
+          return (
+            !v ||
+            (/^\d+(\.\d{1,2})?$/.test(v) &&
+              parseFloat(v) >= 0 &&
+              parseFloat(v) <= 10)
+          );
         },
         message: "Rating must be a number between 0 and 10",
       },
@@ -133,8 +145,13 @@ const movieSchema = new Schema(
       type: String,
       trim: true,
       validate: {
-        validator: function(v) {
-          return !v || (/^\d+(\.\d{1,2})?$/.test(v) && parseFloat(v) >= 0 && parseFloat(v) <= 10);
+        validator: function (v) {
+          return (
+            !v ||
+            (/^\d+(\.\d{1,2})?$/.test(v) &&
+              parseFloat(v) >= 0 &&
+              parseFloat(v) <= 10)
+          );
         },
         message: "Platform rating must be a number between 0 and 10",
       },
@@ -145,7 +162,11 @@ const movieSchema = new Schema(
       trim: true,
       maxlength: [500, "Image path cannot exceed 500 characters"],
     },
-
+    imagebg: {
+      type: String,
+      trim: true,
+      maxlength: [500, "Image path cannot exceed 500 characters"],
+    },
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -179,7 +200,7 @@ const movieSchema = new Schema(
           required: [true, "URL is required for watch links"],
           maxlength: [500, "URL cannot exceed 500 characters"],
           validate: {
-            validator: function(v) {
+            validator: function (v) {
               return /^https?:\/\/.+/.test(v);
             },
             message: "URL must be a valid HTTP or HTTPS link",

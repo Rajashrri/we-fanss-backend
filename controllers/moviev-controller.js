@@ -29,9 +29,7 @@ const addMovie = async (req, res, next) => {
 
     // ✅ Fixed: Remove /movies/ prefix
     const profileImage = req.files?.image?.[0]?.filename || null;
-    const galleryImages = req.files?.gallery
-      ? req.files.gallery.map((file) => file.filename)
-      : [];
+    const bgImage = req.files?.imagebg?.[0]?.filename || null;
 
     const slug = generateSlug({ name: title });
 
@@ -78,7 +76,7 @@ const addMovie = async (req, res, next) => {
       platformRating,
       celebrity,
       image: profileImage, // ✅ Fixed
-      gallery: galleryImages, // ✅ Fixed
+      imagebg: bgImage,
       createdBy,
       status: 1,
       moderationState: "PENDING", // ✅ Added default moderation state
@@ -154,8 +152,7 @@ const getMoviesByCelebrity = async (req, res, next) => {
       celebrity,
       status: 1,
       // moderationState: "PUBLISHED",
-    })
-     
+    });
 
     return res.status(200).json({
       success: true,
@@ -195,6 +192,7 @@ const getMovieById = async (req, res, next) => {
 const updateMovie = async (req, res, next) => {
   try {
     const { id } = req.params;
+
     const {
       title,
       releaseYear,
@@ -209,7 +207,7 @@ const updateMovie = async (req, res, next) => {
       rating,
       platformRating,
       old_image,
-      old_gallery, // ✅ Added for gallery
+      old_imagebg,
       watchLinks,
       awards,
       genre,
@@ -218,10 +216,13 @@ const updateMovie = async (req, res, next) => {
     } = req.body;
 
     const existingMovie = await Movie.findById(id);
+console.log("BODY:", req.body);
+console.log("FILES:", req.files);
     if (!existingMovie) {
       throw createHttpError(404, "Movie not found");
     }
 
+    // ✅ Duplicate title check
     if (title && title !== existingMovie.title) {
       const duplicate = await Movie.findOne({
         title: { $regex: new RegExp(`^${title}$`, "i") },
@@ -233,75 +234,69 @@ const updateMovie = async (req, res, next) => {
       }
     }
 
-    // ✅ Image handling
+    // ✅ Uploaded files
     const profileImage = req.files?.image?.[0]?.filename || null;
-    
-    // ✅ Gallery handling
-    const galleryImages = req.files?.gallery
-      ? req.files.gallery.map((file) => file.filename)
-      : null;
+    const bgImage = req.files?.imagebg?.[0]?.filename || null;
 
+    console.log("FILES:", req.files);
+    console.log("profileImage:", profileImage);
+    console.log("bgImage:", bgImage);
+
+    // ✅ Parse arrays
     let parsedLanguages = [];
+    let parsedGenre = [];
+    let parsedWatchLinks = [];
+
     try {
-      if (typeof languages === "string") parsedLanguages = JSON.parse(languages);
-      else if (Array.isArray(languages)) parsedLanguages = languages;
+      parsedLanguages =
+        typeof languages === "string"
+          ? JSON.parse(languages)
+          : Array.isArray(languages)
+          ? languages
+          : [];
     } catch {
       parsedLanguages = [];
     }
 
-    let parsedGenre = [];
     try {
-      if (typeof genre === "string") parsedGenre = JSON.parse(genre);
-      else if (Array.isArray(genre)) parsedGenre = genre;
+      parsedGenre =
+        typeof genre === "string"
+          ? JSON.parse(genre)
+          : Array.isArray(genre)
+          ? genre
+          : [];
     } catch {
       parsedGenre = [];
     }
 
-    let parsedWatchLinks = [];
     try {
-      if (typeof watchLinks === "string") {
-        if (watchLinks.trim().startsWith("[") && watchLinks.trim().endsWith("]")) {
-          parsedWatchLinks = JSON.parse(watchLinks);
-        }
-      } else if (Array.isArray(watchLinks)) {
-        parsedWatchLinks = watchLinks;
-      } else if (watchLinks && typeof watchLinks === "object") {
-        parsedWatchLinks = [watchLinks];
-      }
-    } catch (err) {
+      parsedWatchLinks =
+        typeof watchLinks === "string"
+          ? JSON.parse(watchLinks)
+          : Array.isArray(watchLinks)
+          ? watchLinks
+          : [];
+    } catch {
       parsedWatchLinks = [];
     }
 
-    parsedWatchLinks = parsedWatchLinks.filter(
-      (wl) => wl && typeof wl === "object" && !Array.isArray(wl)
-    );
-
-    // ✅ Gallery parsing
-    let parsedOldGallery = [];
-    try {
-      if (typeof old_gallery === "string") {
-        parsedOldGallery = JSON.parse(old_gallery);
-      } else if (Array.isArray(old_gallery)) {
-        parsedOldGallery = old_gallery;
-      }
-    } catch {
-      parsedOldGallery = [];
-    }
-
+    // ✅ Slug update
     let slug = existingMovie.slug;
+
     if (title && title !== existingMovie.title) {
       slug = generateSlug({ name: title });
 
       const slugConflict = await Movie.findOne({
-        slug: slug,
+        slug,
         _id: { $ne: id },
       });
 
       if (slugConflict) {
-        throw createHttpError(409, "Generated slug already exists");
+        throw createHttpError(409, "Slug already exists");
       }
     }
 
+    // ✅ Update Data
     const updateData = {
       title,
       slug,
@@ -323,18 +318,18 @@ const updateMovie = async (req, res, next) => {
       watchLinks: parsedWatchLinks,
     };
 
-    // ✅ Image update logic
+    // ✅ Poster Image
     if (profileImage) {
       updateData.image = profileImage;
-    } else if (old_image) {
-      updateData.image = old_image;
+    } else {
+      updateData.image = old_image || existingMovie.image;
     }
 
-    // ✅ Gallery update logic
-    if (galleryImages && galleryImages.length > 0) {
-      updateData.gallery = [...parsedOldGallery, ...galleryImages];
-    } else if (parsedOldGallery.length > 0) {
-      updateData.gallery = parsedOldGallery;
+    // ✅ Background Image
+    if (bgImage) {
+      updateData.imagebg = bgImage;
+    } else {
+      updateData.imagebg = old_imagebg || existingMovie.imagebg;
     }
 
     const updatedMovie = await Movie.findByIdAndUpdate(
@@ -365,7 +360,7 @@ const updateStatus = async (req, res, next) => {
     const updatedMovie = await Movie.findByIdAndUpdate(
       id,
       { $set: { status } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     return res.status(200).json({

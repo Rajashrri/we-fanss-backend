@@ -6,7 +6,10 @@ const fs = require("fs");
 const path = require("path");
 const authenticate = require("../middlewares/auth-middleware");
 const { checkPrivilege } = require("../middlewares/privilege-middleware");
-const { PRIVILEGE_RESOURCES, OPERATIONS } = require("../utils/constant/privilege-constant");
+const {
+  PRIVILEGE_RESOURCES,
+  OPERATIONS,
+} = require("../utils/constant/privilege-constant");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -33,8 +36,14 @@ router.use(authenticate);
  */
 router.post(
   "/",
-  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS, OPERATIONS.ADD),
-  upload.fields([{ name: "image", maxCount: 1 }]),
+  checkPrivilege(
+    PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS,
+    OPERATIONS.ADD
+  ),
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "imagebg", maxCount: 1 },
+  ]),
   movieController.addMovie
 );
 
@@ -46,8 +55,11 @@ router.post(
  */
 router.get(
   "/",
-  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS, OPERATIONS.ADD),
-  movieController.getMovies
+  checkPrivilege(
+    PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS,
+    OPERATIONS.ADD,
+  ),
+  movieController.getMovies,
 );
 
 /**
@@ -56,10 +68,7 @@ router.get(
  * @access  Private
  * @params  celebrity - Celebrity ID
  */
-router.get(
-  "/celebrity/:celebrity",
-  movieController.getMoviesByCelebrity
-);
+router.get("/celebrity/:celebrity", movieController.getMoviesByCelebrity);
 
 /**
  * @route   GET /api/movie/:id
@@ -69,8 +78,11 @@ router.get(
  */
 router.get(
   "/:id",
-  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS, OPERATIONS.ADD),
-  movieController.getMovieById
+  checkPrivilege(
+    PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS,
+    OPERATIONS.ADD,
+  ),
+  movieController.getMovieById,
 );
 
 /**
@@ -82,11 +94,16 @@ router.get(
  */
 router.patch(
   "/:id",
-  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS, OPERATIONS.EDIT),
-  upload.fields([{ name: "image", maxCount: 1 }]),
+  checkPrivilege(
+    PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS,
+    OPERATIONS.EDIT
+  ),
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "imagebg", maxCount: 1 }
+  ]),
   movieController.updateMovie
 );
-
 /**
  * @route   PATCH /api/movie/status/:id
  * @desc    Update movie status only
@@ -96,8 +113,11 @@ router.patch(
  */
 router.patch(
   "/status/:id",
-  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS, OPERATIONS.EDIT),
-  movieController.updateStatus
+  checkPrivilege(
+    PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS,
+    OPERATIONS.EDIT,
+  ),
+  movieController.updateStatus,
 );
 
 /**
@@ -108,8 +128,11 @@ router.patch(
  */
 router.delete(
   "/:id",
-  checkPrivilege(PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS, OPERATIONS.DELETE),
-  movieController.deleteMovie
+  checkPrivilege(
+    PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS,
+    OPERATIONS.DELETE,
+  ),
+  movieController.deleteMovie,
 );
 
 module.exports = router;
