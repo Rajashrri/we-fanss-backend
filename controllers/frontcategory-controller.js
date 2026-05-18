@@ -3,6 +3,9 @@ const Professionalmaster = require("../models/professionalmaster-model");
 const { Language } = require("../models/language-model");
 const Timeline = require("../models/timeline-model");
 const TriviaEntries = require("../models/triviaentries-model");
+const Reference = require('../models/references-model');
+const RelatedPersonality = require('../models/relatedpersonality-model');
+const mongoose = require("mongoose");
 
 const getCelebritiesByCategory = async (req, res) => {
   try {
@@ -163,6 +166,87 @@ const getTriviaByCelebrity = async (req, res) => {
     });
   }
 };
+
+
+// ✅ Get References By Celebrity
+const getReferencesByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const references = await Reference.find({
+      celebrity: celebrityId,
+      status: 1,
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: references,
+    });
+  } catch (error) {
+    console.log("Reference Fetch Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch references",
+    });
+  }
+};
+
+const getRelatedPersonalitiesByCelebrity = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.params;
+
+    console.log("Celebrity ID:", id);
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Celebrity ID is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Celebrity ID",
+      });
+    }
+
+    const relations =
+      await RelatedPersonality.find({
+        celebrity: id,
+        status: 1,
+      })
+        .populate({
+          path: "relatedCelebrity",
+          select:
+            "identityProfile.name identityProfile.slug identityProfile.image identityProfile.shortinfo",
+        })
+        .sort({ createdAt: -1 });
+
+    console.log("Relations:", relations);
+
+    res.status(200).json({
+      success: true,
+      data: relations,
+    });
+  } catch (error) {
+    console.log(
+      "Related Personality Fetch Error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message:
+        "Failed to fetch related personalities",
+      error: error.message,
+    });
+  }
+};
 module.exports = {
-  getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,
+  getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,getReferencesByCelebrity,getRelatedPersonalitiesByCelebrity
 };
