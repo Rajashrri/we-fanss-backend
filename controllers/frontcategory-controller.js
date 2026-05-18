@@ -1,6 +1,8 @@
 const { Celebraty } = require("../models/celebraty-model");
 const Professionalmaster = require("../models/professionalmaster-model");
 const { Language } = require("../models/language-model");
+const Timeline = require("../models/timeline-model");
+const TriviaEntries = require("../models/triviaentries-model");
 
 const getCelebritiesByCategory = async (req, res) => {
   try {
@@ -112,6 +114,55 @@ const getCelebrityBySlug = async (req, res) => {
     });
   }
 };
+
+//timeline fetch
+// ✅ Get Timeline By Celebrity
+const getTimelineByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const timeline = await Timeline.find({
+      celebrity: celebrityId,
+      status: 1,
+    }).sort({ fromYear: 1 });
+
+    res.status(200).json({
+      success: true,
+      data: timeline,
+    });
+  } catch (error) {
+    console.log("Timeline Fetch Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch timeline",
+    });
+  }
+};
+
+// ✅ Get Trivia By Celebrity
+const getTriviaByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const trivia = await TriviaEntries.find({
+      celebrity: celebrityId,
+      status: 1,
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: trivia,
+    });
+  } catch (error) {
+    console.log("Trivia Fetch Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch trivia",
+    });
+  }
+};
 module.exports = {
-  getCelebritiesByCategory,getCelebrityBySlug, 
+  getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,
 };
