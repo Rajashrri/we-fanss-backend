@@ -50,6 +50,10 @@ const getCelebrityPendingSummary = async (req, res, next) => {
       { key: 'custom', label: 'Custom Options', module: MODERATION_MODULES.CUSTOM_OPTION },
       { key: 'references', label: 'References', module: MODERATION_MODULES.REFERENCE },
       { key: 'related', label: 'Related Personalities', module: MODERATION_MODULES.RELATION },
+      { key: 'watch', label: 'Watch', module: MODERATION_MODULES.WATCH },
+      { key: 'read', label: 'Read', module: MODERATION_MODULES.READ },
+      { key: 'listen', label: 'Listen', module: MODERATION_MODULES.LISTEN },
+
     ];
 
     // ✅ Profession-specific modules

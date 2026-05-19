@@ -11,6 +11,9 @@ const RelatedPersonality = require("../models/relatedpersonality-model");
 const { Series } = require("../models/series-model");
 const Timeline = require("../models/timeline-model");
 const TriviaEntries = require("../models/triviaentries-model");
+const Watch = require("../models/watch-model");
+const Read = require("../models/read-model");
+const Listen = require("../models/listen-model");
 
 const MODERATION_MODULES = Object.freeze({
   CELEBRITY: "celebrity",
@@ -22,6 +25,10 @@ const MODERATION_MODULES = Object.freeze({
   RELATION: "relation",
   SERIES: "series",
   TIMELINE: "timeline",
+    WATCH: "watch",
+    READ: "Read",
+    LISTEN: "Listen",
+
   TRIVIA: "trivia",
   DYNAMIC_SECTION: "dynamic-section",
 });
@@ -36,6 +43,10 @@ const MODEL_MAP = {
   [MODERATION_MODULES.RELATION]: RelatedPersonality,
   [MODERATION_MODULES.SERIES]: Series,
   [MODERATION_MODULES.TIMELINE]: Timeline,
+    [MODERATION_MODULES.WATCH]: Watch,
+    [MODERATION_MODULES.READ]: Read,
+    [MODERATION_MODULES.LISTEN]: Listen,
+
   [MODERATION_MODULES.TRIVIA]: TriviaEntries,
   [MODERATION_MODULES.TRIVIA_ENTRIES]: TriviaEntries,  // ✅ Added mapping for triviaentries
 };

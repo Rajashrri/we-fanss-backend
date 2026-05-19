@@ -28,6 +28,7 @@ const seriesRoute = require("./router/series-router");
 const electionRoute = require("./router/election-router");
 const positionsRoute = require("./router/positions-router");
 const userManagementRoute = require("./router/usermanagement-router");
+const watchRoutes = require("./router/watch-router");
 
 const celebrityRoute = require("./router/celebrity-router");
 const timelineRoute = require("./router/timeline-router");
@@ -97,6 +98,7 @@ app.use('/series', express.static(path.join(__dirname, 'public/series')));
 app.use('/election', express.static(path.join(__dirname, 'public/election')));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+app.use('/watch', express.static(path.join(__dirname, 'public/watch')));
 
 app.use("/custom-section", express.static(path.join(__dirname, "public/custom-section")));
 
@@ -135,7 +137,7 @@ app.use("/api/testimonial", testimonialsRoute);
 app.use("/api/dashboard", dashboardRoute);
 app.use("/api/users", userManagementRoute);
 app.use("/api/ckeditor", ckeditorRoute);
-
+app.use("/api/watch", watchRoutes);
 app.use('/api/references', require('./router/references-router'));
 app.use('/api/related-personalities', require('./router/relatedpersonality-routes'));
 
