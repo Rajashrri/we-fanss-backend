@@ -419,16 +419,28 @@ const updateSeriesFeatured = async (req, res) => {
     const { id } = req.params;
     const { featured } = req.body;
 
-    // only when setting featured = 1
+    // current series find
+    const currentSeries = await Series.findById(id);
+
+    if (!currentSeries) {
+      return res.status(404).json({
+        success: false,
+        msg: "Series not found",
+      });
+    }
+
+    // ✅ same celebrity ke only 3 featured
     if (featured == 1) {
       const featuredCount = await Series.countDocuments({
+        celebrityId: currentSeries.celebrityId,
         featured: 1,
+        _id: { $ne: id }, // current series exclude
       });
 
       if (featuredCount >= 3) {
         return res.status(400).json({
           success: false,
-          msg: "Only 3 series can be featured",
+          msg: "Only 3 series can be featured for this celebrity",
         });
       }
     }
@@ -438,13 +450,6 @@ const updateSeriesFeatured = async (req, res) => {
       { featured },
       { new: true }
     );
-
-    if (!series) {
-      return res.status(404).json({
-        success: false,
-        msg: "Series not found",
-      });
-    }
 
     return res.status(200).json({
       success: true,

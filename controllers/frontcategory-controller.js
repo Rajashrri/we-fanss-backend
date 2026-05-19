@@ -5,6 +5,8 @@ const Timeline = require("../models/timeline-model");
 const TriviaEntries = require("../models/triviaentries-model");
 const Reference = require('../models/references-model');
 const RelatedPersonality = require('../models/relatedpersonality-model');
+const { Movie } = require("../models/moviev-model");
+const { Series } = require("../models/series-model");
 const mongoose = require("mongoose");
 
 const getCelebritiesByCategory = async (req, res) => {
@@ -247,6 +249,54 @@ const getRelatedPersonalitiesByCelebrity = async (
     });
   }
 };
+const getFeaturedMoviesByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const movies = await Movie.find({
+      celebrity: celebrityId,
+      status: 1,
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: movies,
+    });
+  } catch (error) {
+    console.log("Featured Movies Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+const getFeaturedSeriesByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const data = await Series.find({
+      celebrityId,
+      featured: 1,
+      status: "1",
+    })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Featured series fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.log("Featured Series Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
 module.exports = {
-  getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,getReferencesByCelebrity,getRelatedPersonalitiesByCelebrity
+  getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,getReferencesByCelebrity,getRelatedPersonalitiesByCelebrity,getFeaturedSeriesByCelebrity,getFeaturedMoviesByCelebrity
 };

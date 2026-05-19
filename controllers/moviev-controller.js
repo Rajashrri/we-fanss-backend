@@ -399,7 +399,8 @@ const deleteMovie = async (req, res, next) => {
 const updateMovieFeatured = async (req, res) => {
   try {
     const { id } = req.params;
-    const { featured } = req.body;
+
+    const featured = Number(req.body.featured);
 
     // Movie exists check
     const existingMovie = await Movie.findById(id);
@@ -411,21 +412,21 @@ const updateMovieFeatured = async (req, res) => {
       });
     }
 
-    // ===== LIMIT CHECK =====
-    // Only when turning featured ON
-    if (featured == 1) {
+    // ===== CELEBRITY WISE LIMIT CHECK =====
+    if (featured === 1) {
 
-      // Count already featured movies
-      const featuredCount = await Movie.countDocuments({
+      const featuredMovies = await Movie.find({
+        celebrity: existingMovie.celebrity,
         featured: 1,
-        _id: { $ne: id }, // exclude current movie
+        _id: { $ne: existingMovie._id },
       });
 
-      // Allow only 3
-      if (featuredCount >= 3) {
+      console.log("Featured Movies:", featuredMovies);
+
+      if (featuredMovies.length >= 3) {
         return res.status(400).json({
           success: false,
-          msg: "Only 3 movies can be featured",
+          msg: "Only 3 movies can be featured for this celebrity",
         });
       }
     }
