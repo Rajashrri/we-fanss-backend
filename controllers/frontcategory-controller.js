@@ -171,10 +171,10 @@ const getTriviaByCelebrity = async (req, res) => {
 // ✅ Get References By Celebrity
 const getReferencesByCelebrity = async (req, res) => {
   try {
-    const { celebrityId } = req.params;
+    const { id } = req.params;
 
     const references = await Reference.find({
-      celebrity: celebrityId,
+      celebrity: id,
       status: 1,
     }).sort({ createdAt: -1 });
 
@@ -188,10 +188,10 @@ const getReferencesByCelebrity = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch references",
+      error: error.message,
     });
   }
 };
-
 const getRelatedPersonalitiesByCelebrity = async (
   req,
   res

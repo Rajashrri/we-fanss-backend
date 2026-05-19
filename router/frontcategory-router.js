@@ -19,7 +19,7 @@ router.get("/timeline/:celebrityId", getTimelineByCelebrity);
 router.get("/trivia/:celebrityId", getTriviaByCelebrity);
 
 router.get(
-  "/references/:celebrityId",
+  "/references/:id",
   getReferencesByCelebrity
 );
 
