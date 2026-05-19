@@ -24,7 +24,10 @@ const seriesSchema = new Schema({
 
   // 📝 Description / Notes
   notes: { type: String },
-
+    featured: {
+      type: Number,
+      default: 0,
+    },
   // ⭐ Ratings
   sort: { type: String },
 

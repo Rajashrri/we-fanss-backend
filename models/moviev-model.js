@@ -172,13 +172,17 @@ const movieSchema = new Schema(
       ref: "User",
       required: [true, "Creator is required"],
     },
-
+    featured: {
+      type: Number,
+      default: 0,
+    },
     status: {
       type: Number,
       enum: {
         values: [0, 1],
         message: "Status must be either 0 (inactive) or 1 (active)",
       },
+
       default: 1,
       index: true,
     },

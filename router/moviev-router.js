@@ -120,6 +120,17 @@ router.patch(
   movieController.updateStatus,
 );
 
+
+router.patch(
+  "/featured/:id",
+  checkPrivilege(
+    PRIVILEGE_RESOURCES.CELEBRITY_PROFESSION_SECTIONS,
+    OPERATIONS.EDIT,
+  ),
+  movieController.  updateMovieFeatured,
+
+);
+
 /**
  * @route   DELETE /api/movie/:id
  * @desc    Delete a movie

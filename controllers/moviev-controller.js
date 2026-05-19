@@ -347,12 +347,13 @@ console.log("FILES:", req.files);
     next(error);
   }
 };
-
 const updateStatus = async (req, res, next) => {
   try {
-    const { id, status } = req.body;
+    const { id } = req.params;
+    const { status } = req.body;
 
     const existingMovie = await Movie.findById(id);
+
     if (!existingMovie) {
       throw createHttpError(404, "Movie not found");
     }
@@ -360,7 +361,7 @@ const updateStatus = async (req, res, next) => {
     const updatedMovie = await Movie.findByIdAndUpdate(
       id,
       { $set: { status } },
-      { new: true, runValidators: true },
+      { new: true, runValidators: true }
     );
 
     return res.status(200).json({
@@ -368,6 +369,7 @@ const updateStatus = async (req, res, next) => {
       message: "Status updated successfully",
       data: updatedMovie,
     });
+
   } catch (error) {
     next(error);
   }
@@ -394,7 +396,62 @@ const deleteMovie = async (req, res, next) => {
     next(error);
   }
 };
+const updateMovieFeatured = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { featured } = req.body;
 
+    // Movie exists check
+    const existingMovie = await Movie.findById(id);
+
+    if (!existingMovie) {
+      return res.status(404).json({
+        success: false,
+        msg: "Movie not found",
+      });
+    }
+
+    // ===== LIMIT CHECK =====
+    // Only when turning featured ON
+    if (featured == 1) {
+
+      // Count already featured movies
+      const featuredCount = await Movie.countDocuments({
+        featured: 1,
+        _id: { $ne: id }, // exclude current movie
+      });
+
+      // Allow only 3
+      if (featuredCount >= 3) {
+        return res.status(400).json({
+          success: false,
+          msg: "Only 3 movies can be featured",
+        });
+      }
+    }
+
+    // Update movie
+    const movie = await Movie.findByIdAndUpdate(
+      id,
+      { featured },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      msg: "Featured updated successfully",
+      data: movie,
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      msg: "Something went wrong",
+    });
+  }
+};
 module.exports = {
   addMovie,
   getMovies,
@@ -403,4 +460,5 @@ module.exports = {
   updateMovie,
   updateStatus,
   deleteMovie,
+  updateMovieFeatured,
 };

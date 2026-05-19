@@ -41,6 +41,15 @@ router.get("/getSeriesByCelebrity/:celebrityId", Series.getSeriesByCelebrity);
 router.get("/GenreMasterOptions", Series.GenreMasterOptions);
 
 router.patch("/update-statusseries", Series.updateStatus);
+
+
+router.patch(
+  "/featured/:id",
+  
+  Series.updateSeriesFeatured
+);
+
+
 router.delete("/deleteseries/:id", Series.deleteseries);
 router.get("/getseriesByid/:id", Series.getseriesByid);
 router.patch(

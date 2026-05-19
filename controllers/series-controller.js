@@ -414,7 +414,53 @@ const getseriesByid = async (req, res) => {
       .json({ msg: "Internal Server Error", error: error.message });
   }
 };
+const updateSeriesFeatured = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { featured } = req.body;
 
+    // only when setting featured = 1
+    if (featured == 1) {
+      const featuredCount = await Series.countDocuments({
+        featured: 1,
+      });
+
+      if (featuredCount >= 3) {
+        return res.status(400).json({
+          success: false,
+          msg: "Only 3 series can be featured",
+        });
+      }
+    }
+
+    const series = await Series.findByIdAndUpdate(
+      id,
+      { featured },
+      { new: true }
+    );
+
+    if (!series) {
+      return res.status(404).json({
+        success: false,
+        msg: "Series not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      msg: "Featured updated successfully",
+      data: series,
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      msg: "Something went wrong",
+    });
+  }
+};
 module.exports = {
   addSeries,
   languageOptions,
@@ -424,4 +470,5 @@ module.exports = {
   deleteseries,
   getseriesByid,
   GenreMasterOptions,
+  updateSeriesFeatured,
 };
