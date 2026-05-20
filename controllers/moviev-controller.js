@@ -166,7 +166,6 @@ const getMoviesByCelebrity = async (req, res, next) => {
 
     const movies = await Movie.find({
       celebrity,
-      status: 1,
       // moderationState: "PUBLISHED",
     });
 
