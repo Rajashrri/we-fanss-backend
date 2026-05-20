@@ -108,10 +108,9 @@ const getMovies = async (
       celebrity,
     } = req.query;
 
-    // ✅ No condition
+    // ✅ No filter
     let query = {};
 
-    // SEARCH
     if (search) {
       query.title = {
         $regex: search,
@@ -119,11 +118,15 @@ const getMovies = async (
       };
     }
 
-    // FILTER BY CELEBRITY
     if (celebrity) {
       query.celebrity =
         celebrity;
     }
+
+    console.log(
+      "Final Query:",
+      query
+    );
 
     const pageNum =
       parseInt(page) || 1;
@@ -136,26 +139,6 @@ const getMovies = async (
 
     const movies =
       await Movie.find(query)
-        .populate(
-          "languages",
-          "name"
-        )
-        .populate(
-          "genre",
-          "name"
-        )
-        .populate(
-          "celebrity",
-          "name"
-        )
-        .populate(
-          "createdBy",
-          "name email"
-        )
-        .populate(
-          "moderatedBy",
-          "name email"
-        )
         .sort({
           createdAt: -1,
         })
@@ -169,22 +152,8 @@ const getMovies = async (
 
     return res.status(200).json({
       success: true,
-
-      message:
-        "Movies retrieved successfully",
-
       data: movies,
-
-      meta: {
-        total,
-        page: pageNum,
-        limit: limitNum,
-
-        totalPages:
-          Math.ceil(
-            total / limitNum
-          ),
-      },
+      total,
     });
   } catch (error) {
     next(error);
