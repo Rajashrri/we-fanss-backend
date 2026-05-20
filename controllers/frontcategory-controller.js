@@ -370,8 +370,30 @@ const getLatestListenByCelebrity = async (req, res) => {
     });
   }
 };
+//watch page list
+const getWatchByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const data = await Watch.find({
+      celebrity: celebrityId,
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
 module.exports = {
   getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,
   getReferencesByCelebrity,getRelatedPersonalitiesByCelebrity,getFeaturedSeriesByCelebrity,
-  getFeaturedMoviesByCelebrity,getLatestWatchByCelebrity,getLatestReadByCelebrity,getLatestListenByCelebrity
+  getFeaturedMoviesByCelebrity,getLatestWatchByCelebrity,getLatestReadByCelebrity,getLatestListenByCelebrity,getWatchByCelebrity
 };
