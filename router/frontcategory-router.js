@@ -5,7 +5,8 @@ const router = express.Router();
 const {
   getCelebritiesByCategory,
   getCelebrityBySlug,
-  getTimelineByCelebrity, getTriviaByCelebrity,getReferencesByCelebrity,  getRelatedPersonalitiesByCelebrity,getFeaturedMoviesByCelebrity, getFeaturedSeriesByCelebrity
+  getTimelineByCelebrity, getTriviaByCelebrity,getReferencesByCelebrity, getLatestWatchByCelebrity, 
+  getRelatedPersonalitiesByCelebrity,getFeaturedMoviesByCelebrity, getFeaturedSeriesByCelebrity,getLatestReadByCelebrity,getLatestListenByCelebrity
 
 } = require("../controllers/frontcategory-controller");
 
@@ -36,4 +37,14 @@ router.get(
  getFeaturedSeriesByCelebrity
 );
 
+
+router.get(
+  "/latest-watch/:id",
+  getLatestWatchByCelebrity
+);
+router.get("/latest-read/:celebrityId", getLatestReadByCelebrity);
+router.get(
+  "/latest-listen/:celebrityId",
+  getLatestListenByCelebrity
+);
 module.exports = router;

@@ -5,6 +5,10 @@ const Timeline = require("../models/timeline-model");
 const TriviaEntries = require("../models/triviaentries-model");
 const Reference = require('../models/references-model');
 const RelatedPersonality = require('../models/relatedpersonality-model');
+const Watch = require("../models/watch-model");
+const Read = require("../models/read-model");
+const Listen = require("../models/listen-model");
+
 const { Movie } = require("../models/moviev-model");
 const { Series } = require("../models/series-model");
 const mongoose = require("mongoose");
@@ -296,7 +300,78 @@ const getFeaturedSeriesByCelebrity = async (req, res) => {
     });
   }
 };
+const getLatestWatchByCelebrity = async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    const data = await Watch.find({
+      celebrity: id,
+      status: 0,
+    })
+      .sort({ createdAt: -1 })
+      .limit(2);
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const getLatestReadByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const data = await Read.find({
+      celebrity: celebrityId,
+      status: 1,
+    })
+      .sort({ createdAt: -1 })
+      .limit(2);
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+const getLatestListenByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const data = await Listen.find({
+      celebrity: celebrityId,
+      status: 1,
+    })
+      .sort({ createdAt: -1 })
+      .limit(2);
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 module.exports = {
-  getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,getReferencesByCelebrity,getRelatedPersonalitiesByCelebrity,getFeaturedSeriesByCelebrity,getFeaturedMoviesByCelebrity
+  getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,
+  getReferencesByCelebrity,getRelatedPersonalitiesByCelebrity,getFeaturedSeriesByCelebrity,
+  getFeaturedMoviesByCelebrity,getLatestWatchByCelebrity,getLatestReadByCelebrity,getLatestListenByCelebrity
 };
