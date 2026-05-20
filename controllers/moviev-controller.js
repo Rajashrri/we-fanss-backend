@@ -95,48 +95,95 @@ const addMovie = async (req, res, next) => {
   }
 };
 
-const getMovies = async (req, res, next) => {
+const getMovies = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { page, limit, search, celebrity, moderationState } = req.query;
+    const {
+      page,
+      limit,
+      search,
+      celebrity,
+    } = req.query;
 
-    let query = { status: 1 }; // ✅ Added status check
+    // ✅ No condition
+    let query = {};
 
-    // ✅ By default, only return PUBLISHED movies
-    query.moderationState = moderationState || "PUBLISHED";
-
+    // SEARCH
     if (search) {
-      query.title = { $regex: search, $options: "i" };
+      query.title = {
+        $regex: search,
+        $options: "i",
+      };
     }
 
+    // FILTER BY CELEBRITY
     if (celebrity) {
-      query.celebrity = celebrity;
+      query.celebrity =
+        celebrity;
     }
 
-    const pageNum = parseInt(page) || 1;
-    const limitNum = parseInt(limit) || 10;
-    const skip = (pageNum - 1) * limitNum;
+    const pageNum =
+      parseInt(page) || 1;
 
-    const movies = await Movie.find(query)
-      .populate("languages", "name")
-      .populate("genre", "name")
-      .populate("celebrity", "name")
-      .populate("createdBy", "name email")
-      .populate("moderatedBy", "name email") // ✅ Fixed field name
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+    const limitNum =
+      parseInt(limit) || 10;
 
-    const total = await Movie.countDocuments(query);
+    const skip =
+      (pageNum - 1) * limitNum;
+
+    const movies =
+      await Movie.find(query)
+        .populate(
+          "languages",
+          "name"
+        )
+        .populate(
+          "genre",
+          "name"
+        )
+        .populate(
+          "celebrity",
+          "name"
+        )
+        .populate(
+          "createdBy",
+          "name email"
+        )
+        .populate(
+          "moderatedBy",
+          "name email"
+        )
+        .sort({
+          createdAt: -1,
+        })
+        .skip(skip)
+        .limit(limitNum);
+
+    const total =
+      await Movie.countDocuments(
+        query
+      );
 
     return res.status(200).json({
       success: true,
-      message: "Movies retrieved successfully",
+
+      message:
+        "Movies retrieved successfully",
+
       data: movies,
+
       meta: {
         total,
         page: pageNum,
         limit: limitNum,
-        totalPages: Math.ceil(total / limitNum),
+
+        totalPages:
+          Math.ceil(
+            total / limitNum
+          ),
       },
     });
   } catch (error) {
