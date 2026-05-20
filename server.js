@@ -29,6 +29,8 @@ const electionRoute = require("./router/election-router");
 const positionsRoute = require("./router/positions-router");
 const userManagementRoute = require("./router/usermanagement-router");
 const watchRoutes = require("./router/watch-router");
+const readRoutes = require("./router/read-router");
+const listenRoutes = require("./router/listen-router");
 
 const celebrityRoute = require("./router/celebrity-router");
 const timelineRoute = require("./router/timeline-router");
@@ -99,6 +101,8 @@ app.use('/election', express.static(path.join(__dirname, 'public/election')));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use('/watch', express.static(path.join(__dirname, 'public/watch')));
+app.use('/read', express.static(path.join(__dirname, 'public/read')));
+app.use('/listen', express.static(path.join(__dirname, 'public/listen')));
 
 app.use("/custom-section", express.static(path.join(__dirname, "public/custom-section")));
 
@@ -140,6 +144,12 @@ app.use("/api/ckeditor", ckeditorRoute);
 app.use("/api/watch", watchRoutes);
 app.use('/api/references', require('./router/references-router'));
 app.use('/api/related-personalities', require('./router/relatedpersonality-routes'));
+
+app.use("/api/read", readRoutes);
+app.use("/api/listen", listenRoutes);
+
+
+
 
 app.use('/api/custom-sections' , require('./router/customoption-router'))
 app.use('/api/options', require('./router/options-router'));

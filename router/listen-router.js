@@ -1,9 +1,9 @@
-// routes/watch-router.js
+// routes/listen-router.js
 
 const express = require("express");
 const router = express.Router();
 
-const WatchController = require("../controllers/watch-controller");
+const ListenController = require("../controllers/listen-controller");
 
 const multer = require("multer");
 const fs = require("fs");
@@ -24,7 +24,7 @@ router.use(
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const dir = path.resolve("public/watch");
+    const dir = path.resolve("public/listen");
 
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -46,47 +46,46 @@ router.use(authenticate);
 
 /* ================= ROUTES ================= */
 
-/* ADD WATCH */
+/* ADD LISTEN */
 router.post(
-  "/addwatch",
+  "/addlisten",
   upload.fields([
     { name: "thumbnail", maxCount: 1 },
   ]),
-  WatchController.addWatch
+  ListenController.addListen
 );
 
-/* UPDATE WATCH */
+/* UPDATE LISTEN */
 router.patch(
-  "/updatewatch/:id",
+  "/updatelisten/:id",
   upload.fields([
     { name: "thumbnail", maxCount: 1 },
   ]),
-  WatchController.updateWatch
+  ListenController.updateListen
 );
 
-/* GET ALL WATCH DATA */
+/* GET ALL LISTEN DATA */
 router.get(
   "/getdata/:celebrityId",
-  WatchController.getdata
+  ListenController.getdata
 );
 
-/* GET WATCH BY ID */
+/* GET LISTEN BY ID */
 router.get(
-  "/getwatchByid/:id",
-  WatchController.getwatchByid
+  "/getlistenByid/:id",
+  ListenController.getlistenByid
 );
 
-/* DELETE WATCH */
+/* DELETE LISTEN */
 router.delete(
-  "/deletewatch/:id",
-  WatchController.deleteWatch
+  "/deletelisten/:id",
+  ListenController.deleteListen
 );
 
 /* UPDATE STATUS */
 router.patch(
   "/updateStatus",
-  WatchController.updateStatus
+  ListenController.updateStatus
 );
-
 
 module.exports = router;

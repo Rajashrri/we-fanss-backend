@@ -1,9 +1,9 @@
-// routes/watch-router.js
+// routes/read-router.js
 
 const express = require("express");
 const router = express.Router();
 
-const WatchController = require("../controllers/watch-controller");
+const ReadController = require("../controllers/read-controller");
 
 const multer = require("multer");
 const fs = require("fs");
@@ -24,7 +24,7 @@ router.use(
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const dir = path.resolve("public/watch");
+    const dir = path.resolve("public/read");
 
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -46,47 +46,46 @@ router.use(authenticate);
 
 /* ================= ROUTES ================= */
 
-/* ADD WATCH */
+/* ADD READ */
 router.post(
-  "/addwatch",
+  "/addread",
   upload.fields([
     { name: "thumbnail", maxCount: 1 },
   ]),
-  WatchController.addWatch
+  ReadController.addRead
 );
 
-/* UPDATE WATCH */
+/* UPDATE READ */
 router.patch(
-  "/updatewatch/:id",
+  "/updateread/:id",
   upload.fields([
     { name: "thumbnail", maxCount: 1 },
   ]),
-  WatchController.updateWatch
+  ReadController.updateRead
 );
 
-/* GET ALL WATCH DATA */
+/* GET ALL READ DATA */
 router.get(
   "/getdata/:celebrityId",
-  WatchController.getdata
+  ReadController.getdata
 );
 
-/* GET WATCH BY ID */
+/* GET READ BY ID */
 router.get(
-  "/getwatchByid/:id",
-  WatchController.getwatchByid
+  "/getreadByid/:id",
+  ReadController.getreadByid
 );
 
-/* DELETE WATCH */
+/* DELETE READ */
 router.delete(
-  "/deletewatch/:id",
-  WatchController.deleteWatch
+  "/deleteread/:id",
+  ReadController.deleteRead
 );
 
 /* UPDATE STATUS */
 router.patch(
   "/updateStatus",
-  WatchController.updateStatus
+  ReadController.updateStatus
 );
-
 
 module.exports = router;

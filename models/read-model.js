@@ -1,55 +1,55 @@
-// models/watch-model.js
-const { Schema, model, models } = require("mongoose");
-const { moderationFields } = require("./schema/moderation-schema");
+const mongoose = require("mongoose");
+
+const {
+  Schema,
+  model,
+  models,
+} = mongoose;
+
+const {
+  moderationFields,
+} = require("./schema/moderation-schema");
 
 const readSchema = new Schema(
   {
     title: {
       type: String,
       required: true,
-      trim: true,
     },
 
     slug: {
       type: String,
-      trim: true,
+      required: true,
     },
 
-    // Thumbnail Image
     thumbnail: {
       type: String,
       default: "",
     },
 
-    // Video Platform
-    videoType: {
+    shortIntro: {
       type: String,
-      enum: ["YT", "Vimeo", "Twitch"],
-      required: true,
+      default: "",
     },
 
-    // Video URL
     link: {
       type: String,
-      required: true,
-      trim: true,
-    },
-
-    status: {
-      type: Number,
-      default: 1,
-      enum: [0, 1],
+      default: "",
     },
 
     celebrity: {
       type: Schema.Types.ObjectId,
       ref: "Celebrity",
-      required: true,
     },
 
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
+    },
+
+    status: {
+      type: Number,
+      default: 1,
     },
 
     ...moderationFields,
@@ -59,5 +59,6 @@ const readSchema = new Schema(
   }
 );
 
-// ✅ Prevent OverwriteModelError
-module.exports = models.Read || model("Read", readSchema);
+module.exports =
+  models.Read ||
+  model("Read", readSchema);

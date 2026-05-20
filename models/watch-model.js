@@ -39,7 +39,6 @@ const watchSchema = new Schema(
       type: Number,
       default: 1,
     },
-
     celebrity: {
       type: Schema.Types.ObjectId,
       ref: "Celebrity",

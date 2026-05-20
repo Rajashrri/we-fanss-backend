@@ -1,6 +1,6 @@
-// controllers/watch-controller.js
+// controllers/read-controller.js
 
-const Watch = require("../models/watch-model");
+const Read = require("../models/read-model");
 const createHttpError = require("http-errors");
 const fs = require("fs");
 const path = require("path");
@@ -10,13 +10,13 @@ const {
   MODERATION_STATES,
 } = require("../models/schema/moderation-schema");
 
-/* ================= ADD WATCH ================= */
+/* ================= ADD READ ================= */
 
-const addWatch = async (req, res, next) => {
+const addRead = async (req, res, next) => {
   try {
     const {
       title,
-      videoType,
+      shortIntro,
       link,
       celebrity,
     } = req.body;
@@ -34,7 +34,7 @@ const addWatch = async (req, res, next) => {
       name: title,
     });
 
-    const existingTitle = await Watch.findOne({
+    const existingTitle = await Read.findOne({
       title: {
         $regex: new RegExp(`^${title}$`, "i"),
       },
@@ -47,7 +47,7 @@ const addWatch = async (req, res, next) => {
       );
     }
 
-    const existingSlug = await Watch.findOne({
+    const existingSlug = await Read.findOne({
       slug: finalSlug,
     });
 
@@ -62,11 +62,11 @@ const addWatch = async (req, res, next) => {
       ? req.files["thumbnail"][0].filename
       : "";
 
-    const newWatch = await Watch.create({
+    const newRead = await Read.create({
       title: title.trim(),
       slug: finalSlug,
       thumbnail,
-      videoType,
+      shortIntro,
       link,
       celebrity,
       createdBy,
@@ -82,15 +82,15 @@ const addWatch = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       message:
-        "Watch created successfully and sent for review",
-      data: newWatch,
+        "Read created successfully and sent for review",
+      data: newRead,
     });
   } catch (error) {
     next(error);
   }
 };
 
-/* ================= GET WATCH DATA ================= */
+/* ================= GET READ DATA ================= */
 
 const getdata = async (req, res, next) => {
   try {
@@ -100,8 +100,6 @@ const getdata = async (req, res, next) => {
       page,
       limit,
       search,
-      status,
-      moderationState,
     } = req.query;
 
     if (!celebrityId) {
@@ -115,14 +113,7 @@ const getdata = async (req, res, next) => {
       celebrity: celebrityId,
     };
 
-    if (
-      moderationState &&
-      moderationState !== "ALL"
-    ) {
-      query.moderationState =
-        moderationState;
-    }
-
+    // SEARCH
     if (search) {
       query.title = {
         $regex: search,
@@ -130,29 +121,24 @@ const getdata = async (req, res, next) => {
       };
     }
 
-    if (status && status !== "ALL") {
-      query.status = parseInt(status);
-    }
+    const pageNum =
+      parseInt(page) || 1;
 
-    const pageNum = parseInt(page) || 1;
+    const limitNum =
+      parseInt(limit) || 10;
 
-    const limitNum = parseInt(limit) || 10;
+    const skip =
+      (pageNum - 1) * limitNum;
 
-    const skip = (pageNum - 1) * limitNum;
-
-    const watches = await Watch.find(query)
+    const reads = await Read.find(query)
       .select({
         title: 1,
         slug: 1,
         thumbnail: 1,
-        videoType: 1,
+        shortIntro: 1,
         link: 1,
         celebrity: 1,
         status: 1,
-        moderationState: 1,
-        moderatedBy: 1,
-        moderatedAt: 1,
-        moderationRemark: 1,
         createdBy: 1,
         createdAt: 1,
         updatedAt: 1,
@@ -161,9 +147,8 @@ const getdata = async (req, res, next) => {
         "celebrity",
         "identityProfile.name"
       )
-      .populate("createdBy", "name email")
       .populate(
-        "moderatedBy",
+        "createdBy",
         "name email"
       )
       .sort({ createdAt: -1 })
@@ -172,63 +157,14 @@ const getdata = async (req, res, next) => {
       .lean();
 
     const total =
-      await Watch.countDocuments(query);
-
-    const formattedData = watches.map(
-      (watch) => ({
-        _id: watch._id,
-        title: watch.title,
-        slug: watch.slug,
-        thumbnail: watch.thumbnail,
-        videoType: watch.videoType,
-        link: watch.link,
-        celebrity: watch.celebrity,
-        status: watch.status || 1,
-
-        moderationState:
-          watch.moderationState ||
-          "PENDING",
-
-        moderatedBy:
-          watch.moderatedBy || null,
-
-        moderatedAt:
-          watch.moderatedAt || null,
-
-        moderationRemark:
-          watch.moderationRemark ||
-          null,
-
-        createdBy: watch.createdBy,
-        createdAt: watch.createdAt,
-        updatedAt: watch.updatedAt,
-      })
-    );
-
-    const pendingCount =
-      await Watch.countDocuments({
-        celebrity: celebrityId,
-        moderationState: "PENDING",
-      });
-
-    const publishedCount =
-      await Watch.countDocuments({
-        celebrity: celebrityId,
-        moderationState: "PUBLISHED",
-      });
-
-    const rejectedCount =
-      await Watch.countDocuments({
-        celebrity: celebrityId,
-        moderationState: "REJECTED",
-      });
+      await Read.countDocuments(query);
 
     return res.status(200).json({
       success: true,
       message:
-        "Watch data retrieved successfully",
+        "Read data retrieved successfully",
 
-      data: formattedData,
+      data: reads,
 
       meta: {
         total,
@@ -238,12 +174,6 @@ const getdata = async (req, res, next) => {
         totalPages: Math.ceil(
           total / limitNum
         ),
-
-        moderationStats: {
-          pending: pendingCount,
-          published: publishedCount,
-          rejected: rejectedCount,
-        },
       },
     });
   } catch (error) {
@@ -251,9 +181,9 @@ const getdata = async (req, res, next) => {
   }
 };
 
-/* ================= GET WATCH BY ID ================= */
+/* ================= GET READ BY ID ================= */
 
-const getwatchByid = async (
+const getreadByid = async (
   req,
   res,
   next
@@ -261,7 +191,7 @@ const getwatchByid = async (
   try {
     const { id } = req.params;
 
-    const watch = await Watch.findById(id)
+    const read = await Read.findById(id)
       .populate(
         "celebrity",
         "identityProfile.name"
@@ -272,27 +202,27 @@ const getwatchByid = async (
         "name email"
       );
 
-    if (!watch) {
+    if (!read) {
       throw createHttpError(
         404,
-        "Watch not found"
+        "Read not found"
       );
     }
 
     return res.status(200).json({
       success: true,
       message:
-        "Watch retrieved successfully",
-      data: watch,
+        "Read retrieved successfully",
+      data: read,
     });
   } catch (error) {
     next(error);
   }
 };
 
-/* ================= UPDATE WATCH ================= */
+/* ================= UPDATE READ ================= */
 
-const updateWatch = async (
+const updateRead = async (
   req,
   res,
   next
@@ -303,23 +233,23 @@ const updateWatch = async (
     const {
       title,
       slug,
-      videoType,
+      shortIntro,
       link,
     } = req.body;
 
-    const existingWatch =
-      await Watch.findById(id);
+    const existingRead =
+      await Read.findById(id);
 
-    if (!existingWatch) {
+    if (!existingRead) {
       throw createHttpError(
         404,
-        "Watch not found"
+        "Read not found"
       );
     }
 
     if (title) {
       const duplicateTitle =
-        await Watch.findOne({
+        await Read.findOne({
           title: {
             $regex: new RegExp(
               `^${title}$`,
@@ -339,7 +269,7 @@ const updateWatch = async (
 
     if (slug) {
       const duplicateSlug =
-        await Watch.findOne({
+        await Read.findOne({
           slug: {
             $regex: new RegExp(
               `^${slug}$`,
@@ -367,9 +297,9 @@ const updateWatch = async (
       updateFields.slug = slug;
     }
 
-    if (videoType !== undefined) {
-      updateFields.videoType =
-        videoType;
+    if (shortIntro !== undefined) {
+      updateFields.shortIntro =
+        shortIntro;
     }
 
     if (link !== undefined) {
@@ -383,11 +313,11 @@ const updateWatch = async (
       req.file;
 
     if (newThumbnail) {
-      if (existingWatch.thumbnail) {
+      if (existingRead.thumbnail) {
         const oldPath = path.join(
           __dirname,
-          "../public/watch/",
-          existingWatch.thumbnail
+          "../public/read/",
+          existingRead.thumbnail
         );
 
         if (fs.existsSync(oldPath)) {
@@ -409,8 +339,8 @@ const updateWatch = async (
     updateFields.moderationRemark =
       null;
 
-    const updatedWatch =
-      await Watch.findByIdAndUpdate(
+    const updatedRead =
+      await Read.findByIdAndUpdate(
         id,
         { $set: updateFields },
         {
@@ -422,9 +352,9 @@ const updateWatch = async (
     return res.status(200).json({
       success: true,
       message:
-        "Watch updated successfully and sent for review",
+        "Read updated successfully and sent for review",
 
-      data: updatedWatch,
+      data: updatedRead,
     });
   } catch (error) {
     next(error);
@@ -439,13 +369,12 @@ const updateStatus = async (
   next
 ) => {
   try {
-    const { id, status } =
-      req.body;
+    const { id, status } = req.body;
 
     if (!id) {
       throw createHttpError(
         400,
-        "Listen ID is required"
+        "Read ID is required"
       );
     }
 
@@ -460,9 +389,7 @@ const updateStatus = async (
     }
 
     if (
-      ![0, 1].includes(
-        Number(status)
-      )
+      ![0, 1].includes(Number(status))
     ) {
       throw createHttpError(
         400,
@@ -470,23 +397,22 @@ const updateStatus = async (
       );
     }
 
-    const existingListen =
-      await Watch.findById(id);
+    const existingRead =
+      await Read.findById(id);
 
-    if (!existingListen) {
+    if (!existingRead) {
       throw createHttpError(
         404,
-        "Listen not found"
+        "Read not found"
       );
     }
 
-    const updatedListen =
-      await Watch.findByIdAndUpdate(
+    const updatedRead =
+      await Read.findByIdAndUpdate(
         id,
         {
           $set: {
-            status:
-              Number(status),
+            status: Number(status),
           },
         },
         {
@@ -498,18 +424,18 @@ const updateStatus = async (
     return res.status(200).json({
       success: true,
       message:
-        "Watch status updated successfully",
+        "Read status updated successfully",
 
-      data: updatedListen,
+      data: updatedRead,
     });
   } catch (error) {
     next(error);
   }
 };
 
-/* ================= DELETE WATCH ================= */
+/* ================= DELETE READ ================= */
 
-const deleteWatch = async (
+const deleteRead = async (
   req,
   res,
   next
@@ -517,21 +443,21 @@ const deleteWatch = async (
   try {
     const { id } = req.params;
 
-    const watch =
-      await Watch.findById(id);
+    const read =
+      await Read.findById(id);
 
-    if (!watch) {
+    if (!read) {
       throw createHttpError(
         404,
-        "Watch not found"
+        "Read not found"
       );
     }
 
-    if (watch.thumbnail) {
+    if (read.thumbnail) {
       const thumbnailPath = path.join(
         __dirname,
-        "../public/watch/",
-        watch.thumbnail
+        "../public/read/",
+        read.thumbnail
       );
 
       if (
@@ -541,12 +467,12 @@ const deleteWatch = async (
       }
     }
 
-    await Watch.findByIdAndDelete(id);
+    await Read.findByIdAndDelete(id);
 
     return res.status(200).json({
       success: true,
       message:
-        "Watch deleted successfully",
+        "Read deleted successfully",
       data: null,
     });
   } catch (error) {
@@ -555,10 +481,10 @@ const deleteWatch = async (
 };
 
 module.exports = {
-  addWatch,
+  addRead,
   getdata,
-  getwatchByid,
-  updateWatch,
+  getreadByid,
+  updateRead,
   updateStatus,
-  deleteWatch,
+  deleteRead,
 };
