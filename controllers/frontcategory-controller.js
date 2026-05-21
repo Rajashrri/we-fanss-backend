@@ -8,6 +8,8 @@ const RelatedPersonality = require('../models/relatedpersonality-model');
 const Watch = require("../models/watch-model");
 const Read = require("../models/read-model");
 const Listen = require("../models/listen-model");
+const { Election } = require("../models/election-model");
+const { Positions } = require("../models/positions-model");
 
 const { Movie } = require("../models/moviev-model");
 const { Series } = require("../models/series-model");
@@ -35,10 +37,19 @@ const getCelebritiesByCategory = async (req, res) => {
       "professionalIdentity.professions": profession._id,
       status: 1,
     })
-    .select(
-  "identityProfile.name identityProfile.slug identityProfile.categoryImage personalDetails.gender personalDetails.dob professionalIdentity.languages"
+.select(
+  `
+  identityProfile.name 
+  identityProfile.slug 
+  identityProfile.categoryImage 
+  personalDetails.gender 
+  personalDetails.dob 
+  professionalIdentity.languages
+  professionalIdentity.professions
+  `
 )
-.populate("professionalIdentity.languages", "name"); // ✅ IMPORTANT
+.populate("professionalIdentity.languages", "name")
+.populate("professionalIdentity.professions", "name slug");
     res.status(200).json({
       success: true,
       category: profession.name,
@@ -306,7 +317,7 @@ const getLatestWatchByCelebrity = async (req, res) => {
 
     const data = await Watch.find({
       celebrity: id,
-      status: 0,
+      status: 1,
     })
       .sort({ createdAt: -1 })
       .limit(2);
@@ -434,9 +445,57 @@ const getListenByCelebrity = async (req, res) => {
   }
 };
 
+
+//election 3
+const getLatestElectionByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const data = await Election.find({
+      celebrityId: celebrityId,
+      status: "1",
+    })
+      .sort({ createdAt: -1 }) // latest first
+      .limit(3); // only 3
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// position
+const getLatestPositionByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const data = await Positions.find({
+      celebrityId: celebrityId,
+      status: "1",
+    })
+      .sort({ createdAt: -1 }) // latest first
+      .limit(3); // only 3
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 module.exports = {
-  getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,
+  getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,getLatestPositionByCelebrity ,
   getReferencesByCelebrity,getRelatedPersonalitiesByCelebrity,getFeaturedSeriesByCelebrity,
   getFeaturedMoviesByCelebrity,getLatestWatchByCelebrity,getLatestReadByCelebrity,getLatestListenByCelebrity,
-  getWatchByCelebrity,getReadByCelebrity,getListenByCelebrity
+  getWatchByCelebrity,getReadByCelebrity,getListenByCelebrity,getLatestElectionByCelebrity
 };
