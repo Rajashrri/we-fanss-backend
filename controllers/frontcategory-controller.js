@@ -391,9 +391,52 @@ const getWatchByCelebrity = async (req, res) => {
   }
 };
 
+const getReadByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const data = await Read.find({
+      celebrity: celebrityId,
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const getListenByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const listen = await Listen.find({
+      celebrity: celebrityId,
+      status: 1, // only active
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: listen,
+    });
+  } catch (error) {
+    console.log("Get Listen Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
 
 module.exports = {
   getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,
   getReferencesByCelebrity,getRelatedPersonalitiesByCelebrity,getFeaturedSeriesByCelebrity,
-  getFeaturedMoviesByCelebrity,getLatestWatchByCelebrity,getLatestReadByCelebrity,getLatestListenByCelebrity,getWatchByCelebrity
+  getFeaturedMoviesByCelebrity,getLatestWatchByCelebrity,getLatestReadByCelebrity,getLatestListenByCelebrity,
+  getWatchByCelebrity,getReadByCelebrity,getListenByCelebrity
 };
