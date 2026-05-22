@@ -3,8 +3,8 @@ const Professionalmaster = require("../models/professionalmaster-model");
 const { Language } = require("../models/language-model");
 const Timeline = require("../models/timeline-model");
 const TriviaEntries = require("../models/triviaentries-model");
-const Reference = require('../models/references-model');
-const RelatedPersonality = require('../models/relatedpersonality-model');
+const Reference = require("../models/references-model");
+const RelatedPersonality = require("../models/relatedpersonality-model");
 const Watch = require("../models/watch-model");
 const Read = require("../models/read-model");
 const Listen = require("../models/listen-model");
@@ -37,8 +37,8 @@ const getCelebritiesByCategory = async (req, res) => {
       "professionalIdentity.professions": profession._id,
       status: 1,
     })
-.select(
-  `
+      .select(
+        `
   identityProfile.name 
   identityProfile.slug 
   identityProfile.categoryImage 
@@ -46,10 +46,10 @@ const getCelebritiesByCategory = async (req, res) => {
   personalDetails.dob 
   professionalIdentity.languages
   professionalIdentity.professions
-  `
-)
-.populate("professionalIdentity.languages", "name")
-.populate("professionalIdentity.professions", "name slug");
+  `,
+      )
+      .populate("professionalIdentity.languages", "name")
+      .populate("professionalIdentity.professions", "name slug");
     res.status(200).json({
       success: true,
       category: profession.name,
@@ -63,7 +63,6 @@ const getCelebritiesByCategory = async (req, res) => {
     });
   }
 };
-
 
 //profile details
 // controller
@@ -85,12 +84,11 @@ const getCelebrityBySlug = async (req, res) => {
     }
 
     // ✅ profession ids
-    const professionIds =
-      celebrity?.professionalIdentity?.professions || [];
+    const professionIds = celebrity?.professionalIdentity?.professions || [];
 
     // ✅ profession master se name lao
     const professions = await Professionalmaster.find({
-      _id: { $in: professionIds }
+      _id: { $in: professionIds },
     }).select("name");
 
     // ✅ comma separated names
@@ -100,16 +98,13 @@ const getCelebrityBySlug = async (req, res) => {
       .join(", ");
 
     // ✅ Language Names
-    const languageIds =
-      celebrity?.professionalIdentity?.languages || [];
+    const languageIds = celebrity?.professionalIdentity?.languages || [];
 
     const languages = await Language.find({
-      _id: { $in: languageIds }
+      _id: { $in: languageIds },
     }).select("name");
 
-    const languageNames = languages
-      .map((item) => item.name)
-      .filter(Boolean);
+    const languageNames = languages.map((item) => item.name).filter(Boolean);
 
     res.status(200).json({
       success: true,
@@ -123,14 +118,14 @@ const getCelebrityBySlug = async (req, res) => {
           professionNames, // ["Actor","Politician"]
 
           languages,
-          languageNames // ["English","Marathi"]
-        }
-      }
+          languageNames, // ["English","Marathi"]
+        },
+      },
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -184,7 +179,6 @@ const getTriviaByCelebrity = async (req, res) => {
   }
 };
 
-
 // ✅ Get References By Celebrity
 const getReferencesByCelebrity = async (req, res) => {
   try {
@@ -209,10 +203,7 @@ const getReferencesByCelebrity = async (req, res) => {
     });
   }
 };
-const getRelatedPersonalitiesByCelebrity = async (
-  req,
-  res
-) => {
+const getRelatedPersonalitiesByCelebrity = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -232,17 +223,16 @@ const getRelatedPersonalitiesByCelebrity = async (
       });
     }
 
-    const relations =
-      await RelatedPersonality.find({
-        celebrity: id,
-        status: 1,
+    const relations = await RelatedPersonality.find({
+      celebrity: id,
+      status: 1,
+    })
+      .populate({
+        path: "relatedCelebrity",
+        select:
+          "identityProfile.name identityProfile.slug identityProfile.image identityProfile.shortinfo",
       })
-        .populate({
-          path: "relatedCelebrity",
-          select:
-            "identityProfile.name identityProfile.slug identityProfile.image identityProfile.shortinfo",
-        })
-        .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 });
 
     console.log("Relations:", relations);
 
@@ -251,15 +241,11 @@ const getRelatedPersonalitiesByCelebrity = async (
       data: relations,
     });
   } catch (error) {
-    console.log(
-      "Related Personality Fetch Error:",
-      error
-    );
+    console.log("Related Personality Fetch Error:", error);
 
     res.status(500).json({
       success: false,
-      message:
-        "Failed to fetch related personalities",
+      message: "Failed to fetch related personalities",
       error: error.message,
     });
   }
@@ -271,6 +257,7 @@ const getFeaturedMoviesByCelebrity = async (req, res) => {
     const movies = await Movie.find({
       celebrity: celebrityId,
       status: 1,
+      featured: 1,
     }).sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -294,8 +281,7 @@ const getFeaturedSeriesByCelebrity = async (req, res) => {
       celebrityId,
       featured: 1,
       status: "1",
-    })
-      .sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -445,7 +431,6 @@ const getListenByCelebrity = async (req, res) => {
   }
 };
 
-
 //election 3
 const getLatestElectionByCelebrity = async (req, res) => {
   try {
@@ -494,8 +479,20 @@ const getLatestPositionByCelebrity = async (req, res) => {
   }
 };
 module.exports = {
-  getCelebritiesByCategory,getCelebrityBySlug, getTimelineByCelebrity,getTriviaByCelebrity,getLatestPositionByCelebrity ,
-  getReferencesByCelebrity,getRelatedPersonalitiesByCelebrity,getFeaturedSeriesByCelebrity,
-  getFeaturedMoviesByCelebrity,getLatestWatchByCelebrity,getLatestReadByCelebrity,getLatestListenByCelebrity,
-  getWatchByCelebrity,getReadByCelebrity,getListenByCelebrity,getLatestElectionByCelebrity
+  getCelebritiesByCategory,
+  getCelebrityBySlug,
+  getTimelineByCelebrity,
+  getTriviaByCelebrity,
+  getLatestPositionByCelebrity,
+  getReferencesByCelebrity,
+  getRelatedPersonalitiesByCelebrity,
+  getFeaturedSeriesByCelebrity,
+  getFeaturedMoviesByCelebrity,
+  getLatestWatchByCelebrity,
+  getLatestReadByCelebrity,
+  getLatestListenByCelebrity,
+  getWatchByCelebrity,
+  getReadByCelebrity,
+  getListenByCelebrity,
+  getLatestElectionByCelebrity,
 };

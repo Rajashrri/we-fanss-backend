@@ -5,10 +5,20 @@ const router = express.Router();
 const {
   getCelebritiesByCategory,
   getCelebrityBySlug,
-  getTimelineByCelebrity, getTriviaByCelebrity,getReferencesByCelebrity, getLatestWatchByCelebrity, 
-  getRelatedPersonalitiesByCelebrity,getFeaturedMoviesByCelebrity, getFeaturedSeriesByCelebrity,getLatestReadByCelebrity,
-  getLatestListenByCelebrity,getWatchByCelebrity,getReadByCelebrity,getListenByCelebrity,getLatestElectionByCelebrity,getLatestPositionByCelebrity
-
+  getTimelineByCelebrity,
+  getTriviaByCelebrity,
+  getReferencesByCelebrity,
+  getLatestWatchByCelebrity,
+  getRelatedPersonalitiesByCelebrity,
+  getFeaturedMoviesByCelebrity,
+  getFeaturedSeriesByCelebrity,
+  getLatestReadByCelebrity,
+  getLatestListenByCelebrity,
+  getWatchByCelebrity,
+  getReadByCelebrity,
+  getListenByCelebrity,
+  getLatestElectionByCelebrity,
+  getLatestPositionByCelebrity,
 } = require("../controllers/frontcategory-controller");
 
 router.get("/frontcategory/:slug", getCelebritiesByCategory);
@@ -20,47 +30,21 @@ router.get("/celebrity/:slug", getCelebrityBySlug);
 router.get("/timeline/:celebrityId", getTimelineByCelebrity);
 router.get("/trivia/:celebrityId", getTriviaByCelebrity);
 
-router.get(
-  "/references/:id",
-  getReferencesByCelebrity
-);
-router.get(
-  "/featured-movies/:celebrityId",
-  getFeaturedMoviesByCelebrity
-);
+router.get("/references/:id", getReferencesByCelebrity);
+router.get("/featured-movies/:celebrityId", getFeaturedMoviesByCelebrity);
 // ✅ ADD THIS
-router.get(
-  "/related-personalities/:id",
-  getRelatedPersonalitiesByCelebrity
-);
-router.get(
-  "/featured-series/:celebrityId",
- getFeaturedSeriesByCelebrity
-);
+router.get("/related-personalities/:id", getRelatedPersonalitiesByCelebrity);
+router.get("/featured-series/:celebrityId", getFeaturedSeriesByCelebrity);
 
-
-router.get(
-  "/latest-watch/:id",
-  getLatestWatchByCelebrity
-);
+router.get("/latest-watch/:id", getLatestWatchByCelebrity);
 router.get("/latest-read/:celebrityId", getLatestReadByCelebrity);
-router.get(
-  "/latest-listen/:celebrityId",
-  getLatestListenByCelebrity
-);
+router.get("/latest-listen/:celebrityId", getLatestListenByCelebrity);
 
 router.get("/watch/:celebrityId", getWatchByCelebrity);
 router.get("/read/:celebrityId", getReadByCelebrity);
-router.get(
-  "/listen/:celebrityId",
-  getListenByCelebrity
-);
+router.get("/listen/:celebrityId", getListenByCelebrity);
 router.get("/latest-election/:celebrityId", getLatestElectionByCelebrity);
 
-router.get(
-  "/latest-position/:celebrityId",
-  getLatestPositionByCelebrity
-);
-
+router.get("/latest-position/:celebrityId", getLatestPositionByCelebrity);
 
 module.exports = router;
