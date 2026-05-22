@@ -478,6 +478,47 @@ const getLatestPositionByCelebrity = async (req, res) => {
     });
   }
 };
+
+//election page list
+const getElectionByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const data = await Election.find({
+      celebrityId: celebrityId,
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+const getPossitionByCelebrity = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const data = await Positions.find({
+      celebrityId: celebrityId,
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   getCelebritiesByCategory,
   getCelebrityBySlug,
@@ -495,4 +536,6 @@ module.exports = {
   getReadByCelebrity,
   getListenByCelebrity,
   getLatestElectionByCelebrity,
+  getElectionByCelebrity,
+  getPossitionByCelebrity,
 };
