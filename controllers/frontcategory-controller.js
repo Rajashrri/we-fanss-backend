@@ -10,6 +10,7 @@ const Read = require("../models/read-model");
 const Listen = require("../models/listen-model");
 const { Election } = require("../models/election-model");
 const { Positions } = require("../models/positions-model");
+const { GenreMaster } = require("../models/genremaster-model");
 
 const { Movie } = require("../models/moviev-model");
 const { Series } = require("../models/series-model");
@@ -73,13 +74,12 @@ const getCelebrityBySlug = async (req, res) => {
 
     const celebrity = await Celebraty.findOne({
       "identityProfile.slug": slug,
-      status: 1,
     }).populate("professionalIdentity.languages", "name");
 
     if (!celebrity) {
       return res.status(404).json({
         success: false,
-        message: "Celebrity not found",
+        message: "Celebnnrity not found",
       });
     }
 
@@ -518,7 +518,69 @@ const getPossitionByCelebrity = async (req, res) => {
     });
   }
 };
+// genre wise movies by celebrity
 
+const getMoviesByCelebrityGenre = async (req, res) => {
+  try {
+    const { slug } = req.params;
+console.log("jjk",slug);
+    // celebrity find by slug
+    const celebrity = await Celebraty.findOne({
+      "identityProfile.slug": slug,
+    });
+
+    if (!celebrity) {
+      return res.status(404).json({
+        success: false,
+        message: "Celoijoebrity not found",
+      });
+    }
+
+    // movies fetch
+    const movies = await Movie.find({
+      celebrity: celebrity._id,
+      status: 1,
+    })
+      .populate("genre", "name slug")
+      .sort({ createdAt: -1 });
+
+    // group by genre
+    const groupedGenres = {};
+
+    movies.forEach((movie) => {
+      if (movie.genre && movie.genre.length > 0) {
+        movie.genre.forEach((genreItem) => {
+          const genreName = genreItem.name;
+
+          if (!groupedGenres[genreName]) {
+            groupedGenres[genreName] = {
+              title: genreItem.name,
+              slug: genreItem.slug,
+              type: "suggestion",
+              mainclass: "bg-[#fff]",
+              movies: [],
+            };
+          }
+
+          groupedGenres[genreName].movies.push(movie);
+        });
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      celebrity: celebrity.identityProfile.name,
+      data: Object.values(groupedGenres),
+    });
+  } catch (error) {
+    console.log("Movies By Genre Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 module.exports = {
   getCelebritiesByCategory,
   getCelebrityBySlug,
@@ -537,5 +599,5 @@ module.exports = {
   getListenByCelebrity,
   getLatestElectionByCelebrity,
   getElectionByCelebrity,
-  getPossitionByCelebrity,
+  getPossitionByCelebrity,getMoviesByCelebrityGenre
 };
