@@ -17,7 +17,12 @@ const seriesSchema = new Schema({
   celebrityId: { type: String }, // series title
 
   // 🌍 Metadata
-  languages: [{ type: String }],
+languages: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Language",
+      },
+    ],
   director: { type: String },
   end_year: { type: String },
   statusseries: { type: String },

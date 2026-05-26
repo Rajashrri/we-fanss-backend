@@ -523,7 +523,6 @@ const getPossitionByCelebrity = async (req, res) => {
 const getMoviesByCelebrityGenre = async (req, res) => {
   try {
     const { slug } = req.params;
-console.log("jjk",slug);
     // celebrity find by slug
     const celebrity = await Celebraty.findOne({
       "identityProfile.slug": slug,
@@ -542,6 +541,8 @@ console.log("jjk",slug);
       status: 1,
     })
       .populate("genre", "name slug")
+        .populate("languages", "name slug")   // 🔥 ADD THIS
+
       .sort({ createdAt: -1 });
 
     // group by genre
@@ -581,6 +582,101 @@ console.log("jjk",slug);
     });
   }
 };
+
+// genre wise series by celebrity
+
+const getSeriesByCelebrityGenre = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // celebrity find by slug
+    const celebrity = await Celebraty.findOne({
+      "identityProfile.slug": slug,
+    });
+
+    if (!celebrity) {
+      return res.status(404).json({
+        success: false,
+        message: "Celebrity not found",
+      });
+    }
+
+    // series fetch
+    const series = await Series.find({
+      celebrityId: celebrity._id,
+      status: "1",
+    })
+      .populate("genre", "name slug")
+        .populate("languages", "name slug")   // 🔥 ADD THIS
+      .sort({ createdAt: -1 });
+
+    // group by genre
+    const groupedGenres = {};
+
+    series.forEach((item) => {
+      if (item.genre && item.genre.length > 0) {
+        item.genre.forEach((genreItem) => {
+          const genreName = genreItem.name;
+
+          if (!groupedGenres[genreName]) {
+            groupedGenres[genreName] = {
+              title: genreItem.name,
+              slug: genreItem.slug,
+              type: "suggestion",
+              mainclass: "bg-[#fff]",
+              movies: [],
+            };
+          }
+
+          groupedGenres[genreName].movies.push(item);
+        });
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      celebrity: celebrity.identityProfile.name,
+      data: Object.values(groupedGenres),
+    });
+  } catch (error) {
+    console.log("Series By Genre Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+const getFeaturedSeriesByCelebrity2 = async (req, res) => {
+  try {
+    const { celebrityId } = req.params;
+
+    const data = await Series.find({
+      celebrityId,
+      featured: 1,
+      status: "1",
+    })
+      .populate("languages", "name slug")
+      .populate("genre", "name slug")
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    return res.status(200).json({
+      success: true,
+      message: "Featured series fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.log("Featured Series Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
 module.exports = {
   getCelebritiesByCategory,
   getCelebrityBySlug,
@@ -599,5 +695,7 @@ module.exports = {
   getListenByCelebrity,
   getLatestElectionByCelebrity,
   getElectionByCelebrity,
-  getPossitionByCelebrity,getMoviesByCelebrityGenre
+  getPossitionByCelebrity,getMoviesByCelebrityGenre,
+  getSeriesByCelebrityGenre,
+  getFeaturedSeriesByCelebrity2
 };

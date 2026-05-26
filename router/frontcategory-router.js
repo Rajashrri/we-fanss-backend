@@ -18,7 +18,9 @@ const {
   getReadByCelebrity,
   getListenByCelebrity,
   getLatestElectionByCelebrity,
-  getLatestPositionByCelebrity,getElectionByCelebrity,getPossitionByCelebrity,getMoviesByCelebrityGenre
+  getLatestPositionByCelebrity,getElectionByCelebrity,getPossitionByCelebrity,getMoviesByCelebrityGenre,
+  getSeriesByCelebrityGenre,
+  getFeaturedSeriesByCelebrity2
 } = require("../controllers/frontcategory-controller");
 
 router.get("/frontcategory/:slug", getCelebritiesByCategory);
@@ -49,5 +51,12 @@ router.get("/latest-position/:celebrityId", getLatestPositionByCelebrity);
 router.get("/election/:celebrityId", getElectionByCelebrity);
 router.get("/possition/:celebrityId", getPossitionByCelebrity);
 router.get("/movies-by-genre/:slug", getMoviesByCelebrityGenre);
-
+router.get(
+  "/series-by-celebrity-genre/:slug",
+  getSeriesByCelebrityGenre
+);
+router.get(
+  "/featured-series2/:celebrityId",
+  getFeaturedSeriesByCelebrity2
+);
 module.exports = router;
