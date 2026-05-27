@@ -54,6 +54,10 @@ const ckeditorRoute = require("./router/ckeditor-router");
 
 //frontend
 const frontcategoryRoutes = require("./router/frontcategory-router");
+
+const userRoutes = require("./router/user-router");
+
+
 console.log(process.env.WEBSITE_URL);
 
 
@@ -162,9 +166,15 @@ app.use("/api/celebrity-sections", require("./router/celebratysection-router"));
 // app.use("/api/references", referenceRoute); 
 
 
+
+
+
+
 //front api
 app.use("/api/front", frontcategoryRoutes);
 
+
+app.use("/api/user", userRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).json({
