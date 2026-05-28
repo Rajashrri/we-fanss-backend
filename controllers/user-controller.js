@@ -73,11 +73,11 @@ const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    const existingUser = await Userlogin.findOne({
-      email,
-    });
+    const existingUser = await Userlogin.findOne({ email });
 
-    // ================= VERIFIED USER =================
+    const otp = generateOtp();
+
+    // VERIFIED USER
     if (existingUser && existingUser.isVerified) {
       return res.status(400).json({
         success: false,
@@ -85,71 +85,54 @@ const register = async (req, res) => {
       });
     }
 
-    const otp =
-      process.env.ENABLE_STATIC_OTP_PROD === "true"
-        ? process.env.STATIC_OTP
-        : generateOtp();
-
-    // ================= UNVERIFIED USER =================
+    // UNVERIFIED USER UPDATE
     if (existingUser && !existingUser.isVerified) {
       existingUser.name = name;
       existingUser.password = password;
 
       existingUser.emailOtp = {
         code: otp,
-        expiresAt: new Date(
-          Date.now() + 10 * 60 * 1000
-        ),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
         attempts: 0,
         resendCount: 0,
       };
 
       await existingUser.save();
 
-      // ✅ SEND EMAIL
-      await sendRegisterOTPEmail(
-        email,
-        name,
-        otp
-      );
+      sendRegisterOTPEmail(email, name, otp)
+        .catch(err => console.log("EMAIL FAILED:", err.message));
 
       return res.status(200).json({
         success: true,
-        message:
-          "OTP resent to existing user",
+        message: "OTP resent successfully",
       });
     }
 
-    // ================= NEW USER =================
-  const user = new Userlogin({
-  name,
-  email,
-  password,
-  isVerified: false,
-  emailOtp: {
-    code: otp,
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-    attempts: 0,
-    resendCount: 0,
-  },
-});
+    // NEW USER
+    const user = new Userlogin({
+      name,
+      email,
+      password,
+      isVerified: false,
+      emailOtp: {
+        code: otp,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        attempts: 0,
+        resendCount: 0,
+      },
+    });
 
-await user.save();
+    await user.save();
 
-// ✅ EMAIL SAFE (NON BLOCKING)
-try {
-  await sendRegisterOTPEmail(email, name, otp);
-} catch (err) {
-  console.log("EMAIL FAILED:", err.message);
-}
+    sendRegisterOTPEmail(email, name, otp)
+      .catch(err => console.log("EMAIL FAILED:", err.message));
 
-return res.status(201).json({
-  success: true,
-  message: "Account created successfully. Check email or resend OTP.",
-});
+    return res.status(201).json({
+      success: true,
+      message: "OTP sent successfully",
+    });
+
   } catch (error) {
-    console.log(error);
-
     return res.status(500).json({
       success: false,
       message: "Server Error",
@@ -157,7 +140,6 @@ return res.status(201).json({
     });
   }
 };
-
 // ================= VERIFY OTP =================
 const verifyRegisterOtp = async (req, res) => {
   try {
