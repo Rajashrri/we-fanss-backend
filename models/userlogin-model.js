@@ -76,6 +76,13 @@ profileImage: {
   type: String,
   default: "",
 },
+
+  forgotOtp: {
+  code: String,
+  expiresAt: Date,
+  attempts: { type: Number, default: 0 },
+},
+
     // Last Login Info
     lastLogin: {
       type: Date,
@@ -89,7 +96,8 @@ profileImage: {
   },
   {
     timestamps: true,
-  }
+  },
+
 );
 
 // Indexes

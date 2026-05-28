@@ -71,32 +71,6 @@ const sendEmail = async ({ to, subject, text, html, attachments }) => {
 };
 
 
-// Send Forgot Password OTP Email
-const sendForgotPasswordOTPEmail = async (to, username, otp, expiryMinutes = 10) => {
-  const html = getForgotPasswordOTPTemplate(username, otp, expiryMinutes);
-  const text = `Dear ${username},
-
-We received a request to reset the password for your WE FANSS account.
-
-Please use the One-Time Password (OTP) below to proceed with resetting your password:
-
-Password Reset OTP: ${otp}
-
-This OTP is valid for ${expiryMinutes} minutes and can be used only once. For security reasons, please do not share this OTP with anyone.
-
-If you did not request a password reset, please ignore this email or contact our support team immediately.
-
-Regards,
-Team WE FANSS`;
-
-  await sendEmail({
-    to,
-    subject: "WE FANSS – Password Reset OTP",
-    text,
-    html,
-  });
-};
-
 // =======================================
 // REGISTER OTP TEMPLATE
 // =======================================
@@ -460,6 +434,389 @@ const getResendOTPTemplate = (
 `;
 };
 
+
+
+
+const sendResendForgotPasswordOTPEmail = async (
+  to,
+  username,
+  otp,
+  expiryMinutes = 10
+) => {
+
+  const html = getForgetResendOTPTemplate(
+    username,
+    otp,
+    expiryMinutes
+  );
+
+  const text = `Dear ${username},
+
+A new OTP has been requested for your WE FANSS account.
+
+Resend OTP: ${otp}
+
+This OTP is valid for ${expiryMinutes} minutes.
+
+If you did not request this OTP, please contact support immediately.
+
+Regards,
+Team WE FANSS`;
+
+  await sendEmail({
+    to,
+    subject: "Your WE FANSS Resend OTP",
+    text,
+    html,
+  });
+};
+
+const getForgetResendOTPTemplate = (
+  username,
+  otp,
+  expiryMinutes = 10
+) => {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your WE FANSS Resend OTP</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000000 !important;
+    }
+  </style>
+</head>
+
+<body style="margin:0 !important; padding:0 !important; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; background-color:#000000 !important;">
+
+  <div style="background-color:#000000; padding:40px 20px; min-height:100vh;">
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#000000;">
+      <tr>
+        <td align="center">
+
+          <table width="600" cellpadding="0" cellspacing="0"
+            style="background-color:#1a1a1a; border-radius:12px; overflow:hidden; border:1px solid #2a2a2a; max-width:600px;">
+
+            <!-- LOGO -->
+            <tr>
+              <td style="padding:40px 30px 30px 30px;">
+                <div style="display:inline-block; background-color:#0F4F72; width:48px; height:48px; border-radius:8px; text-align:center; line-height:48px; font-size:24px;">
+                  🔄
+                </div>
+              </td>
+            </tr>
+
+            <!-- HEADER -->
+            <tr>
+              <td style="padding:0 30px 30px 30px;">
+                <h1 style="margin:0; color:#ffffff; font-size:24px; font-weight:600; line-height:1.3;">
+                  Your WE FANSS Resend Forgot OTP
+                </h1>
+              </td>
+            </tr>
+
+            <!-- CONTENT -->
+            <tr>
+              <td style="padding:0 30px 30px 30px;">
+
+                <p style="margin:0 0 20px; color:#e0e0e0; font-size:15px; line-height:1.6;">
+                  Dear <strong style="color:#ffffff;">${username}</strong>,
+                </p>
+
+                <p style="margin:0 0 30px; color:#e0e0e0; font-size:15px; line-height:1.6;">
+                  A new OTP has been requested for your 
+                  <strong style="color:#0F4F72;">WE FANSS</strong> account.
+                </p>
+
+                <p style="margin:0 0 25px; color:#e0e0e0; font-size:15px; line-height:1.6;">
+                  Please use the OTP below to continue:
+                </p>
+
+                <!-- OTP BOX -->
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" style="padding:0 0 30px 0;">
+
+                      <div style="background-color:#0F4F72; border-radius:8px; padding:20px 40px; display:inline-block;">
+
+                        <p style="margin:0 0 5px 0; color:#ffffff; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px;">
+                          Resend Forgot OTP
+                        </p>
+
+                        <span style="color:#ffffff; font-size:32px; font-weight:bold; letter-spacing:8px; font-family:'Courier New', monospace;">
+                          ${otp}
+                        </span>
+
+                      </div>
+
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 20px; color:#b0b0b0; font-size:14px; line-height:1.6;">
+                  This OTP is valid for 
+                  <strong style="color:#e0e0e0;">
+                    ${expiryMinutes} minutes
+                  </strong>.
+                  Please do not share this code with anyone.
+                </p>
+
+                <!-- WARNING -->
+                <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0 0;">
+                  <tr>
+                    <td style="background-color:#2a2a2a; border-left:4px solid #ffc107; border-radius:6px; padding:15px;">
+
+                      <p style="margin:0; color:#e0e0e0; font-size:14px; line-height:1.5;">
+                        ⚠️ <strong style="color:#ffc107;">Important:</strong>
+                        If you did not request this OTP, please contact support immediately.
+                      </p>
+
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:30px 0 0 0; color:#e0e0e0; font-size:14px; line-height:1.6;">
+                  Regards,<br>
+                  <strong style="color:#0F4F72;">
+                    Team WE FANSS
+                  </strong>
+                </p>
+
+              </td>
+            </tr>
+
+            <!-- DIVIDER -->
+            <tr>
+              <td style="padding:0 30px;">
+                <div style="border-top:1px solid #2a2a2a;"></div>
+              </td>
+            </tr>
+
+            <!-- FOOTER -->
+            <tr>
+              <td style="padding:30px; text-align:left;">
+
+                <p style="margin:0 0 5px; color:#808080; font-size:12px; line-height:1.5;">
+                  © ${new Date().getFullYear()} WE FANSS. All Rights Reserved
+                </p>
+
+                <p style="margin:5px 0 0; color:#808080; font-size:12px; line-height:1.5;">
+                  This is an automated message, please do not reply to this email.
+                </p>
+
+              </td>
+            </tr>
+
+          </table>
+
+        </td>
+      </tr>
+    </table>
+
+  </div>
+
+</body>
+</html>
+`;
+};
+const getForgotPasswordOTPTemplate = (
+  username,
+  otp,
+  expiryMinutes = 10
+) => {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your WE FANSS Registration OTP</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000000 !important;
+    }
+  </style>
+</head>
+
+<body style="margin:0 !important; padding:0 !important; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; background-color:#000000 !important;">
+
+  <div style="background-color:#000000; padding:40px 20px; min-height:100vh;">
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#000000;">
+      <tr>
+        <td align="center">
+
+          <table width="600" cellpadding="0" cellspacing="0"
+            style="background-color:#1a1a1a; border-radius:12px; overflow:hidden; border:1px solid #2a2a2a; max-width:600px;">
+
+            <!-- LOGO -->
+            <tr>
+              <td style="padding:40px 30px 30px 30px;">
+                <div style="display:inline-block; background-color:#0F4F72; width:48px; height:48px; border-radius:8px; text-align:center; line-height:48px; font-size:24px;">
+                  ✨
+                </div>
+              </td>
+            </tr>
+
+            <!-- HEADER -->
+            <tr>
+              <td style="padding:0 30px 30px 30px;">
+                <h1 style="margin:0; color:#ffffff; font-size:24px; font-weight:600; line-height:1.3;">
+                  Your WE FANSS Forgot OTP
+                </h1>
+              </td>
+            </tr>
+
+            <!-- CONTENT -->
+            <tr>
+              <td style="padding:0 30px 30px 30px;">
+
+                <p style="margin:0 0 20px; color:#e0e0e0; font-size:15px; line-height:1.6;">
+                  Dear <strong style="color:#ffffff;">${username}</strong>,
+                </p>
+
+                <p style="margin:0 0 30px; color:#e0e0e0; font-size:15px; line-height:1.6;">
+                  Thank you for registering with 
+                  <strong style="color:#0F4F72;">WE FANSS</strong>.
+                </p>
+
+                <p style="margin:0 0 25px; color:#e0e0e0; font-size:15px; line-height:1.6;">
+                  Please use the One-Time Password (OTP) below to verify your account:
+                </p>
+
+                <!-- OTP BOX -->
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" style="padding:0 0 30px 0;">
+
+                      <div style="background-color:#0F4F72; border-radius:8px; padding:20px 40px; display:inline-block;">
+
+                        <p style="margin:0 0 5px 0; color:#ffffff; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px;">
+                          Forgot OTP
+                        </p>
+
+                        <span style="color:#ffffff; font-size:32px; font-weight:bold; letter-spacing:8px; font-family:'Courier New', monospace;">
+                          ${otp}
+                        </span>
+
+                      </div>
+
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 20px; color:#b0b0b0; font-size:14px; line-height:1.6;">
+                  This OTP is valid for 
+                  <strong style="color:#e0e0e0;">
+                    ${expiryMinutes} minutes
+                  </strong>.
+                  For security reasons, please do not share this code with anyone.
+                </p>
+
+                <!-- WARNING -->
+                <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0 0;">
+                  <tr>
+                    <td style="background-color:#2a2a2a; border-left:4px solid #ffc107; border-radius:6px; padding:15px;">
+
+                      <p style="margin:0; color:#e0e0e0; font-size:14px; line-height:1.5;">
+                        ⚠️ <strong style="color:#ffc107;">Important:</strong>
+                        If you did not create this account, please ignore this email.
+                      </p>
+
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:30px 0 0 0; color:#e0e0e0; font-size:14px; line-height:1.6;">
+                  Regards,<br>
+                  <strong style="color:#0F4F72;">
+                    Team WE FANSS
+                  </strong>
+                </p>
+
+              </td>
+            </tr>
+
+            <!-- DIVIDER -->
+            <tr>
+              <td style="padding:0 30px;">
+                <div style="border-top:1px solid #2a2a2a;"></div>
+              </td>
+            </tr>
+
+            <!-- FOOTER -->
+            <tr>
+              <td style="padding:30px; text-align:left;">
+
+                <p style="margin:0 0 5px; color:#808080; font-size:12px; line-height:1.5;">
+                  © ${new Date().getFullYear()} WE FANSS. All Rights Reserved
+                </p>
+
+                <p style="margin:5px 0 0; color:#808080; font-size:12px; line-height:1.5;">
+                  This is an automated message, please do not reply to this email.
+                </p>
+
+              </td>
+            </tr>
+
+          </table>
+
+        </td>
+      </tr>
+    </table>
+
+  </div>
+
+</body>
+</html>
+`;
+};
+
+
+const sendForgotPasswordOTPEmail = async (
+  to,
+  username,
+  otp,
+  expiryMinutes = 10
+) => {
+  const html = getForgotPasswordOTPTemplate(
+    username,
+    otp,
+    expiryMinutes
+  );
+
+  const text = `Dear ${username},
+
+We received a request to reset your password for your WE FANSS account.
+
+Your OTP is: ${otp}
+
+This OTP is valid for ${expiryMinutes} minutes.
+
+If you did not request this, please ignore this email.
+
+Regards,
+Team WE FANSS`;
+
+  await sendEmail({
+    to,
+    subject: "WE FANSS - Password Reset OTP",
+    text,
+    html,
+  });
+};
+
+
 // =======================================
 // SEND RESEND OTP EMAIL
 // =======================================
@@ -597,6 +954,6 @@ module.exports = {
   sendForgotPasswordOTPEmail,
   sendWelcomeEmail,
   sendResendOTPEmail,
-  sendForgotPasswordLinkEmail
-  
+  sendForgotPasswordLinkEmail,
+  sendResendForgotPasswordOTPEmail,
 };

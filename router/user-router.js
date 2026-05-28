@@ -4,6 +4,10 @@ const router = express.Router();
 const {
   register,
   verifyRegisterOtp,resendRegisterOtp,login,  googleLogin, // 👈 ADD
+  forgotPassword,
+    verifyForgotOtp,
+    resendForgotOtp,
+  resetPassword
 
 } = require("../controllers/user-controller");
 
@@ -15,4 +19,14 @@ router.post(
 );
 router.post("/google-login", googleLogin);
 router.post("/login", login);
+router.post("/forgot-password", forgotPassword);
+// ================= FORGOT PASSWORD =================
+router.post("/forgot-password", forgotPassword);
+
+// ================= VERIFY FORGOT OTP =================
+router.post("/verify-forgot-otp", verifyForgotOtp);
+router.post("/resend-forgot-otp", resendForgotOtp);
+
+// ================= RESET PASSWORD =================
+router.post("/reset-password", resetPassword);
 module.exports = router;

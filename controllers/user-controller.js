@@ -5,6 +5,8 @@ const jwt = require("jsonwebtoken");
 const {
   sendResendOTPEmail,
   sendRegisterOTPEmail,
+  sendForgotPasswordOTPEmail,
+  sendResendForgotPasswordOTPEmail
 } = require("../config/useremail.config");
 const { OAuth2Client } = require("google-auth-library");
 
@@ -404,11 +406,312 @@ const login = async (req, res) => {
     });
   }
 };
+
+//forgot 
+
+// ================= FORGOT PASSWORD =================
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // ================= EMAIL VALIDATION =================
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // ================= USER CHECK =================
+    const user = await Userlogin.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Email does not exist",
+      });
+    }
+
+    // ================= VERIFIED CHECK =================
+    if (!user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Please verify your email first",
+      });
+    }
+
+    // ================= OTP GENERATE =================
+    const otp =
+      process.env.ENABLE_STATIC_OTP_PROD === "true"
+        ? process.env.STATIC_OTP
+        : generateOtp();
+
+    // ================= SAVE OTP =================
+    user.forgotOtp = {
+      code: otp,
+      expiresAt: new Date(
+        Date.now() + 10 * 60 * 1000
+      ),
+      attempts: 0,
+    };
+
+    await user.save();
+
+    // ================= EMAIL SEND =================
+    try {
+      await sendForgotPasswordOTPEmail(
+        user.email,
+        user.name,
+        otp
+      );
+
+      console.log("✅ Forgot OTP email sent");
+
+    } catch (mailError) {
+
+      console.log(
+        "❌ EMAIL ERROR:",
+        mailError.message
+      );
+
+      // EMAIL FAIL HO TAB BHI OTP SAVE RAHEGA
+      // USER FLOW CONTINUE HOGA
+    }
+
+    // ================= SUCCESS RESPONSE =================
+    return res.status(200).json({
+      success: true,
+      message:
+        "OTP generated successfully",
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+
+  }
+};
+const verifyForgotOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    // ================= CHECK USER =================
+    const user = await Userlogin.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ================= CHECK OTP EXISTS =================
+    if (!user.forgotOtp?.code) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP not found",
+      });
+    }
+
+    // ================= CHECK OTP EXPIRY =================
+    if (user.forgotOtp.expiresAt < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+      });
+    }
+
+    // ================= CHECK OTP MATCH =================
+    if (user.forgotOtp.code !== otp) {
+
+      user.forgotOtp.attempts += 1;
+
+      await user.save();
+
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    // ================= SUCCESS =================
+    user.forgotOtp.code = null;
+    user.forgotOtp.expiresAt = null;
+    user.forgotOtp.attempts = 0;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP verified successfully",
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+// ================= RESET PASSWORD =================
+const resetPassword = async (req, res) => {
+  try {
+    const { email, password, confirmPassword } = req.body;
+
+    // ================= VALIDATION =================
+    if (!email || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    // ================= FIND USER =================
+    const user = await Userlogin.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+ // ================= UPDATE PASSWORD =================
+
+user.password = password;
+
+// clear OTP if exists
+if (user.resetOtp) {
+  user.resetOtp.code = null;
+  user.resetOtp.expiresAt = null;
+  user.resetOtp.attempts = 0;
+}
+
+await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+const resendForgotOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // ================= EMAIL VALIDATION =================
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // ================= USER CHECK =================
+    const user = await Userlogin.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ================= OTP GENERATE =================
+    const otp =
+      process.env.ENABLE_STATIC_OTP_PROD === "true"
+        ? process.env.STATIC_OTP
+        : generateOtp();
+
+    // ================= SAVE OTP =================
+    user.forgotOtp = {
+      code: otp,
+      expiresAt: new Date(
+        Date.now() + 10 * 60 * 1000
+      ),
+      attempts: 0,
+    };
+
+    await user.save();
+
+    // ================= EMAIL SEND =================
+    try {
+
+      await sendResendForgotPasswordOTPEmail(
+        user.email,
+        user.name,
+        otp
+      );
+
+      console.log(
+        "✅ Forgot resend OTP email sent"
+      );
+
+    } catch (mailError) {
+
+      console.log(
+        "❌ EMAIL ERROR:",
+        mailError.message
+      );
+
+      // EMAIL FAIL HO TAB BHI FLOW CONTINUE HOGA
+    }
+
+    // ================= SUCCESS RESPONSE =================
+    return res.status(200).json({
+      success: true,
+      message:
+        "OTP resent successfully",
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+
+  }
+};
 module.exports = {
   register,
   verifyRegisterOtp,
   resendRegisterOtp,
     login,
   googleLogin, // 👈 ADD THIS
+  forgotPassword,
+  verifyForgotOtp,
+    resetPassword,
+    resendForgotOtp,
+
 
 };
