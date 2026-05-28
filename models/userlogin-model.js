@@ -72,7 +72,10 @@ isVerified: {
         createdAt: { type: Date, default: Date.now },
       },
     ],
-
+profileImage: {
+  type: String,
+  default: "",
+},
     // Last Login Info
     lastLogin: {
       type: Date,

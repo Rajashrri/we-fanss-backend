@@ -6,15 +6,68 @@ const {
   sendResendOTPEmail,
   sendRegisterOTPEmail,
 } = require("../config/useremail.config");
+const { OAuth2Client } = require("google-auth-library");
 
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // ================= OTP =================
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+const googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
 
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
 
+    const payload = ticket.getPayload();
+    const { name, email, picture } = payload;
+
+    // ❌ ONLY CHECK USER (NO AUTO CREATE)
+    let user = await Userlogin.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        needRegister: true,
+        message: "Please register first",
+      });
+    }
+
+    // OPTIONAL: if user exists but not verified
+    if (!user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Please verify your email first",
+      });
+    }
+
+    // JWT
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET_KEY4,
+      { expiresIn: "7d" }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Google login successful",
+      token,
+      user,
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Google Login Failed",
+    });
+  }
+};
 // ================= REGISTER =================
 const register = async (req, res) => {
   try {
@@ -68,34 +121,33 @@ const register = async (req, res) => {
     }
 
     // ================= NEW USER =================
-    const user = new Userlogin({
-      name,
-      email,
-      password,
-      isVerified: false,
-      emailOtp: {
-        code: otp,
-        expiresAt: new Date(
-          Date.now() + 10 * 60 * 1000
-        ),
-        attempts: 0,
-        resendCount: 0,
-      },
-    });
+  // ================= NEW USER =================
+const user = new Userlogin({
+  name,
+  email,
+  password,
+  isVerified: false,
+  emailOtp: {
+    code: otp,
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    attempts: 0,
+    resendCount: 0,
+  },
+});
 
-    await user.save();
+await user.save();
 
-    // ✅ SEND EMAIL
-    await sendRegisterOTPEmail(
-      email,
-      name,
-      otp
-    );
+// ================= SEND EMAIL (NON-BLOCKING) =================
+try {
+  await sendRegisterOTPEmail(email, name, otp);
+} catch (emailError) {
+  console.log("Email failed but user created:", emailError.message);
+}
 
-    return res.status(201).json({
-      success: true,
-      message: "OTP sent successfully",
-    });
+return res.status(201).json({
+  success: true,
+  message: "OTP sent successfully (check email or resend OTP)",
+});
   } catch (error) {
     console.log(error);
 
@@ -376,5 +428,6 @@ module.exports = {
   verifyRegisterOtp,
   resendRegisterOtp,
     login,
+  googleLogin, // 👈 ADD THIS
 
 };
