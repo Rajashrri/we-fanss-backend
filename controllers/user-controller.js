@@ -121,8 +121,7 @@ const register = async (req, res) => {
     }
 
     // ================= NEW USER =================
-  // ================= NEW USER =================
-const user = new Userlogin({
+  const user = new Userlogin({
   name,
   email,
   password,
@@ -137,16 +136,16 @@ const user = new Userlogin({
 
 await user.save();
 
-// ================= SEND EMAIL (NON-BLOCKING) =================
+// ✅ EMAIL SAFE (NON BLOCKING)
 try {
   await sendRegisterOTPEmail(email, name, otp);
-} catch (emailError) {
-  console.log("Email failed but user created:", emailError.message);
+} catch (err) {
+  console.log("EMAIL FAILED:", err.message);
 }
 
 return res.status(201).json({
   success: true,
-  message: "OTP sent successfully (check email or resend OTP)",
+  message: "Account created successfully. Check email or resend OTP.",
 });
   } catch (error) {
     console.log(error);
