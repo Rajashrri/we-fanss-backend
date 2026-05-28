@@ -143,12 +143,14 @@ const register = async (req, res) => {
   }
 };
 // ================= VERIFY OTP =================
+
 const verifyRegisterOtp = async (req, res) => {
   try {
+
     const { email, otp } = req.body;
 
     // ================= FIND USER =================
-    const user = await Userlogin.findOne({ email });
+    const user = await Userlogin.findOne({ email }).select("+password");
 
     if (!user) {
       return res.status(404).json({
@@ -186,6 +188,7 @@ const verifyRegisterOtp = async (req, res) => {
 
     // ================= INVALID OTP =================
     if (user.emailOtp.code !== otp) {
+
       user.emailOtp.attempts =
         (user.emailOtp.attempts || 0) + 1;
 
@@ -197,26 +200,73 @@ const verifyRegisterOtp = async (req, res) => {
       });
     }
 
-    // ================= SUCCESS =================
+    // ================= OTP VERIFIED =================
     user.emailOtp.code = null;
     user.emailOtp.expiresAt = null;
     user.emailOtp.attempts = 0;
 
     user.isVerified = true;
 
+    // ================= TOKEN =================
+    const token = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+      },
+      process.env.JWT_SECRET_KEY4,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    // ================= SAVE LOGIN INFO =================
+    user.refreshTokens.push({
+      token: token,
+      device:
+        req.headers["user-agent"] ||
+        "Unknown Device",
+      ip:
+        req.ip ||
+        req.connection.remoteAddress ||
+        "Unknown IP",
+      expiresAt: new Date(
+        Date.now() +
+          7 * 24 * 60 * 60 * 1000
+      ),
+    });
+
+    user.lastLogin = new Date();
+
+    user.lastLoginIp =
+      req.ip ||
+      req.connection.remoteAddress;
+
+    user.lastLoginDevice =
+      req.headers["user-agent"];
+
     await user.save();
 
+    // ================= RESPONSE =================
     return res.status(200).json({
       success: true,
       message: "OTP verified successfully",
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+      },
     });
+
   } catch (error) {
+
     console.log(error);
 
     return res.status(500).json({
       success: false,
       message: "Server Error",
     });
+
   }
 };
 const resendRegisterOtp = async (req, res) => {
@@ -374,17 +424,36 @@ const login = async (req, res) => {
     });
 
     // ================= LAST LOGIN =================
-    user.lastLogin = new Date();
+  await Userlogin.updateOne(
+  { _id: user._id },
+  {
+    $set: {
+      lastLogin: new Date(),
+      lastLoginIp:
+        req.ip ||
+        req.connection.remoteAddress,
+      lastLoginDevice:
+        req.headers["user-agent"],
+    },
 
-    user.lastLoginIp =
-      req.ip ||
-      req.connection.remoteAddress;
-
-    user.lastLoginDevice =
-      req.headers["user-agent"];
-
-    await user.save();
-
+    $push: {
+      refreshTokens: {
+        token: token,
+        device:
+          req.headers["user-agent"] ||
+          "Unknown Device",
+        ip:
+          req.ip ||
+          req.connection.remoteAddress ||
+          "Unknown IP",
+        expiresAt: new Date(
+          Date.now() +
+            7 * 24 * 60 * 60 * 1000
+        ),
+      },
+    },
+  }
+);
     return res.status(200).json({
       success: true,
       message: "Login successful",
@@ -702,6 +771,111 @@ const resendForgotOtp = async (req, res) => {
 
   }
 };
+
+
+
+// ================= CHANGE PASSWORD =================
+// ================= CHANGE PASSWORD =================
+const changePassword = async (req, res) => {
+  try {
+
+    const {
+      email,
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    } = req.body;
+
+    // ================= REQUIRED =================
+    if (
+      !email ||
+      !currentPassword ||
+      !newPassword ||
+      !confirmPassword
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // ================= PASSWORD MATCH =================
+    if (
+      newPassword !== confirmPassword
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "New password and confirm password do not match",
+      });
+    }
+
+    // ================= USER =================
+    const user =
+      await Userlogin.findOne({
+        email,
+      }).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ================= CURRENT PASSWORD CHECK =================
+    const isMatch =
+      await bcrypt.compare(
+        currentPassword,
+        user.password
+      );
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Current password not match",
+      });
+    }
+
+    // ================= SAME PASSWORD CHECK =================
+    const isSamePassword =
+      await bcrypt.compare(
+        newPassword,
+        user.password
+      );
+
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "New password must be different from current password",
+      });
+    }
+
+    // ================= SAVE PASSWORD =================
+    // REGISTER JAISA DIRECT SAVE
+    user.password = newPassword;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Password changed successfully",
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+
+  }
+};
 module.exports = {
   register,
   verifyRegisterOtp,
@@ -712,6 +886,6 @@ module.exports = {
   verifyForgotOtp,
     resetPassword,
     resendForgotOtp,
-
+changePassword,
 
 };
