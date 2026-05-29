@@ -8,6 +8,7 @@ const RelatedPersonality = require("../models/relatedpersonality-model");
 const Watch = require("../models/watch-model");
 const Read = require("../models/read-model");
 const Listen = require("../models/listen-model");
+const RecentView = require("../models/recentview-model");
 
 const Follow = require("../models/follow-model");
 
@@ -867,6 +868,95 @@ const celebrities = await Celebraty.find({
 
   }
 };
+
+
+//recent view
+
+
+// ================= ADD RECENT VIEW =================
+
+const addRecentView = async (req, res) => {
+
+  try {
+
+    const { userId, celebrityId } = req.body;
+
+    // already viewed?
+    const existing = await RecentView.findOne({
+      userId,
+      celebrityId,
+    });
+
+    // agar already hai to latest bana do
+    if (existing) {
+
+      existing.updatedAt = new Date();
+
+      await existing.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Updated",
+      });
+    }
+
+    // new save
+    await RecentView.create({
+      userId,
+      celebrityId,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Recent View Saved",
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+const getRecentViews = async (req, res) => {
+
+  try {
+
+    const { userId } = req.params;
+
+    const recent = await RecentView.find({
+      userId,
+    })
+      .sort({ updatedAt: -1 })
+      .limit(10);
+
+    const celebrityIds = recent.map(
+      (item) => item.celebrityId
+    );
+
+    const celebrities = await Celebraty.find({
+      _id: { $in: celebrityIds },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: celebrities,
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
 module.exports = {
   
 
@@ -896,5 +986,7 @@ getAllProfession,
   checkFollowStatus,
   unfollowCelebrity,
   getFollowedCelebrities,
-  getFollowedCelebritiesall
+  getFollowedCelebritiesall,
+  addRecentView,
+  getRecentViews
 };

@@ -26,7 +26,9 @@ const {
   getAllProfession,
   unfollowCelebrity,
   getFollowedCelebrities,
-  getFollowedCelebritiesall
+  getFollowedCelebritiesall,
+  addRecentView,
+  getRecentViews
 } = require("../controllers/frontcategory-controller");
 
 
@@ -90,5 +92,12 @@ router.get(
 router.get(
   "/allfollowed/:userId",
   getFollowedCelebritiesall
+);
+
+router.post("/recent-view/add", addRecentView);
+
+router.get(
+  "/recent-view/:userId",
+  getRecentViews
 );
 module.exports = router;
