@@ -25,7 +25,8 @@ const {
   checkFollowStatus,
   getAllProfession,
   unfollowCelebrity,
-  getFollowedCelebrities
+  getFollowedCelebrities,
+  getFollowedCelebritiesall
 } = require("../controllers/frontcategory-controller");
 
 
@@ -84,5 +85,10 @@ router.delete(
 router.get(
   "/follow/followed/:userId",
   getFollowedCelebrities
+);
+
+router.get(
+  "/allfollowed/:userId",
+  getFollowedCelebritiesall
 );
 module.exports = router;

@@ -794,11 +794,17 @@ const getFollowedCelebrities = async (req, res) => {
       (item) => item.celebrityId
     );
 
-    // celebrity data
-    const celebrities = await Celebraty.find({
-      _id: { $in: celebrityIds },
-    });
-
+const celebrities = await Celebraty.find({
+  _id: { $in: celebrityIds },
+})
+.populate({
+  path: "professionalIdentity.professions",
+  select: "name slug",
+})
+.populate({
+  path: "professionalIdentity.primaryProfession",
+  select: "name slug",
+});
     res.status(200).json({
       success: true,
       data: celebrities,
@@ -812,8 +818,55 @@ const getFollowedCelebrities = async (req, res) => {
     });
   }
 };
+const getFollowedCelebritiesall = async (req, res) => {
+  try {
 
+    const { userId } = req.params;
 
+    // all follows latest first
+    const follows = await Follow.find({ userId })
+      .sort({ createdAt: -1 });
+
+    // ids
+    const celebrityIds = follows.map(
+      (item) => item.celebrityId
+    );
+
+    // get celebrities
+const celebrities = await Celebraty.find({
+  _id: { $in: celebrityIds },
+})
+.populate({
+  path: "professionalIdentity.professions",
+  select: "name slug",
+})
+.populate({
+  path: "professionalIdentity.primaryProfession",
+  select: "name slug",
+});
+    // maintain same order
+    const orderedCelebrities = celebrityIds.map((id) =>
+      celebrities.find(
+        (c) => c._id.toString() === id.toString()
+      )
+    );
+
+    res.status(200).json({
+      success: true,
+      data: orderedCelebrities,
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+
+  }
+};
 module.exports = {
   
 
@@ -842,5 +895,6 @@ getAllProfession,
   createFollow,
   checkFollowStatus,
   unfollowCelebrity,
-  getFollowedCelebrities
+  getFollowedCelebrities,
+  getFollowedCelebritiesall
 };
