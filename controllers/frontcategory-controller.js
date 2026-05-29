@@ -8,6 +8,9 @@ const RelatedPersonality = require("../models/relatedpersonality-model");
 const Watch = require("../models/watch-model");
 const Read = require("../models/read-model");
 const Listen = require("../models/listen-model");
+
+const Follow = require("../models/follow-model");
+
 const { Election } = require("../models/election-model");
 const { Positions } = require("../models/positions-model");
 const { GenreMaster } = require("../models/genremaster-model");
@@ -15,6 +18,25 @@ const { GenreMaster } = require("../models/genremaster-model");
 const { Movie } = require("../models/moviev-model");
 const { Series } = require("../models/series-model");
 const mongoose = require("mongoose");
+
+
+//header url
+
+const getAllProfession = async (req, res) => {
+  try {
+    const data = await Professionalmaster.find({ status: 1 });
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 const getCelebritiesByCategory = async (req, res) => {
   try {
@@ -677,7 +699,126 @@ const getFeaturedSeriesByCelebrity2 = async (req, res) => {
     });
   }
 };
+
+const createFollow = async (req, res) => {
+  try {
+    const { celebrityId, userId } = req.body;
+
+    // already followed check
+    const alreadyFollow = await Follow.findOne({
+      celebrityId,
+      userId,
+    });
+
+    if (alreadyFollow) {
+      return res.status(400).json({
+        success: false,
+        message: "Already Following",
+      });
+    }
+
+    const follow = await Follow.create({
+      celebrityId,
+      userId,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Followed Successfully",
+      data: follow,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+const checkFollowStatus = async (req, res) => {
+  try {
+    const { userId, celebrityId } = req.params;
+
+    const follow = await Follow.findOne({
+      userId,
+      celebrityId,
+    });
+
+    res.status(200).json({
+      success: true,
+      isFollowing: !!follow,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+    });
+  }
+};
+
+const unfollowCelebrity = async (req, res) => {
+  try {
+    const { userId, celebrityId } = req.params;
+
+    await Follow.findOneAndDelete({
+      userId,
+      celebrityId,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Unfollowed Successfully",
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+    });
+  }
+};
+const getFollowedCelebrities = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // latest 6 followed
+    const follows = await Follow.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(6);
+
+    // celebrity ids
+    const celebrityIds = follows.map(
+      (item) => item.celebrityId
+    );
+
+    // celebrity data
+    const celebrities = await Celebraty.find({
+      _id: { $in: celebrityIds },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: celebrities,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+
 module.exports = {
+  
+
+getAllProfession,
+
   getCelebritiesByCategory,
   getCelebrityBySlug,
   getTimelineByCelebrity,
@@ -697,5 +838,9 @@ module.exports = {
   getElectionByCelebrity,
   getPossitionByCelebrity,getMoviesByCelebrityGenre,
   getSeriesByCelebrityGenre,
-  getFeaturedSeriesByCelebrity2
+  getFeaturedSeriesByCelebrity2,
+  createFollow,
+  checkFollowStatus,
+  unfollowCelebrity,
+  getFollowedCelebrities
 };

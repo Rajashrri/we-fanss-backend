@@ -20,8 +20,16 @@ const {
   getLatestElectionByCelebrity,
   getLatestPositionByCelebrity,getElectionByCelebrity,getPossitionByCelebrity,getMoviesByCelebrityGenre,
   getSeriesByCelebrityGenre,
-  getFeaturedSeriesByCelebrity2
+  getFeaturedSeriesByCelebrity2,
+  createFollow,
+  checkFollowStatus,
+  getAllProfession,
+  unfollowCelebrity,
+  getFollowedCelebrities
 } = require("../controllers/frontcategory-controller");
+
+
+router.get("/profession", getAllProfession);
 
 router.get("/frontcategory/:slug", getCelebritiesByCategory);
 
@@ -58,5 +66,23 @@ router.get(
 router.get(
   "/featured-series2/:celebrityId",
   getFeaturedSeriesByCelebrity2
+);
+
+
+router.post("/follow/create", createFollow);
+
+router.get(
+  "/follow/check/:userId/:celebrityId",
+  checkFollowStatus
+);
+
+router.delete(
+  "/follow/unfollow/:userId/:celebrityId",
+  unfollowCelebrity
+);
+
+router.get(
+  "/follow/followed/:userId",
+  getFollowedCelebrities
 );
 module.exports = router;
