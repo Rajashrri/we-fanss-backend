@@ -53,9 +53,13 @@ const ckeditorRoute = require("./router/ckeditor-router");
 
 
 //frontend
-const frontcategoryRoutes = require("./router/frontcategory-router");
+const frontRoutes = require("./router/front-router");
+
+const userloginRoutes = require("./router/userlogin-router");
 
 const userRoutes = require("./router/user-router");
+
+
 const collectionRoutes = require("./router/collection-router");
 
 
@@ -174,9 +178,10 @@ app.use("/api/celebrity-sections", require("./router/celebratysection-router"));
 
 
 //front api
-app.use("/api/front", frontcategoryRoutes);
+app.use("/api/front", frontRoutes);
 
 
+app.use("/api/userlogin", userloginRoutes);
 app.use("/api/user", userRoutes);
 
 app.get("/health", (req, res) => {

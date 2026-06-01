@@ -2,37 +2,65 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  register,
-  verifyRegisterOtp,resendRegisterOtp,login,  googleLogin, // 👈 ADD
-  forgotPassword,
-    verifyForgotOtp,
-    resendForgotOtp,
-  resetPassword,
-  changePassword
+   getSavedCelebrityCount,
+  getFollowedCount,
+    getFollowedCelebrities,
+  getFollowedCelebritiesall,
+  addRecentView,
+  getRecentViews,
+  getCollectionsHome,
+  getUserCollections,
+  getCollectionDetails,
 
 } = require("../controllers/user-controller");
 
-router.post("/register", register);
-router.post("/verify-register-otp", verifyRegisterOtp);
-router.post(
-  "/resend-register-otp",
-  resendRegisterOtp
+
+// --------------------------------- user dashboard -------------------------------------------------------------------------
+
+
+
+router.get(
+  "/saved-count/:userId",
+  getSavedCelebrityCount
 );
-router.post("/google-login", googleLogin);
-router.post("/login", login);
-router.post("/forgot-password", forgotPassword);
-// ================= FORGOT PASSWORD =================
-router.post("/forgot-password", forgotPassword);
 
-// ================= VERIFY FORGOT OTP =================
-router.post("/verify-forgot-otp", verifyForgotOtp);
-router.post("/resend-forgot-otp", resendForgotOtp);
-
-// ================= RESET PASSWORD =================
-router.post("/reset-password", resetPassword);
-
-router.post(
-  "/change-password",
-  changePassword
+router.get(
+  "/followed-count/:userId",
+  getFollowedCount
 );
+
+
+
+router.get(
+  "/follow/followed/:userId",
+  getFollowedCelebrities
+);
+
+router.get(
+  "/allfollowed/:userId",
+  getFollowedCelebritiesall
+);
+
+router.post("/recent-view/add", addRecentView);
+
+router.get(
+  "/recent-view/:userId",
+  getRecentViews
+);
+
+router.get(
+  "/collectionhome/:userId",
+  getCollectionsHome
+);
+
+router.get(
+  "/allcollection/:userId",
+  getUserCollections
+);
+router.get(
+  "/collection-details/:slug",
+  getCollectionDetails
+);
+
+
 module.exports = router;
