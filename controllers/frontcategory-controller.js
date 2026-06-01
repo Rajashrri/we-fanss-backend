@@ -9,13 +9,11 @@ const Watch = require("../models/watch-model");
 const Read = require("../models/read-model");
 const Listen = require("../models/listen-model");
 const RecentView = require("../models/recentview-model");
-
+const Collection = require("../models/collection-model");
 const Follow = require("../models/follow-model");
-
 const { Election } = require("../models/election-model");
 const { Positions } = require("../models/positions-model");
 const { GenreMaster } = require("../models/genremaster-model");
-
 const { Movie } = require("../models/moviev-model");
 const { Series } = require("../models/series-model");
 const mongoose = require("mongoose");
@@ -957,11 +955,145 @@ const getRecentViews = async (req, res) => {
     });
   }
 };
+
+const getCollectionsHome = async (
+  req,
+  res
+) => {
+  try {
+
+    const { userId } = req.params;
+
+    const collections =
+      await Collection.find({
+        userId,
+      })
+        .sort({ createdAt: -1 })
+        .limit(6);
+
+    res.status(200).json({
+      success: true,
+      data: collections,
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+const getUserCollections =
+  async (req, res) => {
+    try {
+      const { userId } =
+        req.params;
+
+      const collections =
+        await Collection.find({
+          userId,
+        }).sort({
+          createdAt: -1,
+        });
+
+      res.json({
+        success: true,
+        data: collections,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message:
+          "Server Error",
+      });
+    }
+  };
+
+
+  const getCollectionDetails = async (
+  req,
+  res
+) => {
+  try {
+    const { slug } = req.params;
+
+    const collection =
+      await Collection.findOne({ slug })
+        .populate("celebrities");
+
+    if (!collection) {
+      return res.status(404).json({
+        success: false,
+        message: "Collection not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: collection,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+const getSavedCelebrityCount = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const collections = await Collection.find({ userId });
+
+    let totalSaved = 0;
+
+    collections.forEach((collection) => {
+      totalSaved += collection.celebrities.length;
+    });
+
+    res.status(200).json({
+      success: true,
+      totalSaved,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+const getFollowedCount = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const count = await Follow.countDocuments({
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      totalFollowed: count,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
 module.exports = {
   
 
 getAllProfession,
-
   getCelebritiesByCategory,
   getCelebrityBySlug,
   getTimelineByCelebrity,
@@ -988,5 +1120,10 @@ getAllProfession,
   getFollowedCelebrities,
   getFollowedCelebritiesall,
   addRecentView,
-  getRecentViews
+  getRecentViews,
+  getCollectionsHome,
+  getUserCollections,
+  getCollectionDetails,
+  getSavedCelebrityCount,
+  getFollowedCount 
 };

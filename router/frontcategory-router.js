@@ -28,7 +28,12 @@ const {
   getFollowedCelebrities,
   getFollowedCelebritiesall,
   addRecentView,
-  getRecentViews
+  getRecentViews,
+  getCollectionsHome,
+  getUserCollections,
+  getCollectionDetails,
+  getSavedCelebrityCount,
+  getFollowedCount
 } = require("../controllers/frontcategory-controller");
 
 
@@ -99,5 +104,29 @@ router.post("/recent-view/add", addRecentView);
 router.get(
   "/recent-view/:userId",
   getRecentViews
+);
+
+router.get(
+  "/collectionhome/:userId",
+  getCollectionsHome
+);
+
+router.get(
+  "/allcollection/:userId",
+  getUserCollections
+);
+router.get(
+  "/collection-details/:slug",
+  getCollectionDetails
+);
+
+router.get(
+  "/saved-count/:userId",
+  getSavedCelebrityCount
+);
+
+router.get(
+  "/followed-count/:userId",
+  getFollowedCount
 );
 module.exports = router;

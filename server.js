@@ -56,6 +56,8 @@ const ckeditorRoute = require("./router/ckeditor-router");
 const frontcategoryRoutes = require("./router/frontcategory-router");
 
 const userRoutes = require("./router/user-router");
+const collectionRoutes = require("./router/collection-router");
+
 
 
 console.log(process.env.WEBSITE_URL);
@@ -152,6 +154,7 @@ app.use('/api/related-personalities', require('./router/relatedpersonality-route
 app.use("/api/read", readRoutes);
 app.use("/api/listen", listenRoutes);
 
+app.use("/api/collection", collectionRoutes);
 
 
 
