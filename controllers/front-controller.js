@@ -63,6 +63,8 @@ const getCelebritiesByCategory = async (req, res) => {
   identityProfile.name 
   identityProfile.slug 
   identityProfile.categoryImage 
+    identityProfile.featuredImage 
+
   personalDetails.gender 
   personalDetails.dob 
   professionalIdentity.languages
@@ -71,6 +73,57 @@ const getCelebritiesByCategory = async (req, res) => {
       )
       .populate("professionalIdentity.languages", "name")
       .populate("professionalIdentity.professions", "name slug");
+    res.status(200).json({
+      success: true,
+      category: profession.name,
+      total: celebrities.length,
+      data: celebrities,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const getCelebritiesBySlider = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // Find category
+    const profession = await Professionalmaster.findOne({
+      slug: slug.toLowerCase(),
+      status: 1,
+    });
+
+    if (!profession) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    // Find celebrities from nested professionalIdentity.professions
+const celebrities = await Celebraty.find({
+  "professionalIdentity.professions": profession._id,
+  status: 1,
+  featured: 1,
+})
+  .select(`
+    identityProfile.name 
+    identityProfile.slug 
+    identityProfile.categoryImage 
+        identityProfile.featuredImage 
+
+    personalDetails.gender 
+    personalDetails.dob 
+    professionalIdentity.languages
+    professionalIdentity.professions
+  `)
+  .populate("professionalIdentity.languages", "name")
+  .populate("professionalIdentity.professions", "name slug")
+  .limit(3);
     res.status(200).json({
       success: true,
       category: profession.name,
@@ -784,6 +837,7 @@ module.exports = {
   
 
 getAllProfession,
+getCelebritiesBySlider,
   getCelebritiesByCategory,
   getCelebrityBySlug,
   getTimelineByCelebrity,

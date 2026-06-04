@@ -25,7 +25,7 @@ const {
   checkFollowStatus,
   getAllProfession,
   unfollowCelebrity,
-
+getCelebritiesBySlider
  
 } = require("../controllers/front-controller");
 
@@ -82,4 +82,7 @@ router.delete(
   unfollowCelebrity
 );
 
+// routes/celebrity.js
+
+router.get("/slider/:slug", getCelebritiesBySlider);
 module.exports = router;
