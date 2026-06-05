@@ -2,8 +2,11 @@ const Collection = require("../models/collection-model");
 const Follow = require("../models/follow-model");
 const RecentView = require("../models/recentview-model");
 const { Celebraty } = require("../models/celebraty-model");
+const Userlogin = require("../models/userlogin-model");
 
 
+const fs = require("fs");
+const path = require("path");
 // ----------------------------------user dashboard ----------------------------------------------------
 
 const getSavedCelebrityCount = async (req, res) => {
@@ -319,6 +322,91 @@ const getUserCollections =
     });
   }
 };
+
+
+
+const getProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await Userlogin.findById(userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+const updateProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, email, mobile } = req.body;
+
+    const user = await Userlogin.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    user.name = name || user.name;
+    user.email = email || user.email;
+    user.mobile = mobile || user.mobile;
+
+    // New Profile Image
+    if (
+      req.files &&
+      req.files.profileImage &&
+      req.files.profileImage.length > 0
+    ) {
+      // Delete old image
+      if (user.profileImage) {
+        const oldImagePath = path.join(
+          __dirname,
+          "..",
+          "public",
+          user.profileImage.replace("/userprofile/", "userprofile/")
+        );
+
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+
+      // Save new image
+      user.profileImage = `/userprofile/${req.files.profileImage[0].filename}`;
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 module.exports = {
 
 getSavedCelebrityCount,
@@ -330,6 +418,7 @@ getSavedCelebrityCount,
   getCollectionsHome,
   getUserCollections,
   getCollectionDetails,
-   
+   updateProfile,
+getProfile
 
 };

@@ -22,7 +22,10 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
   
-
+  mobile: {
+    type: String,
+    },
+  
 passwordResetToken: {
   type: String,
   default: null,

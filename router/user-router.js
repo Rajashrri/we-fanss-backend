@@ -1,6 +1,27 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const bodyparser = require("body-parser");
+const validate = require("../middlewares/validate.middleware");
+router.use(bodyparser.urlencoded({ extended: true }));
+router.use(express.static(path.resolve(__dirname, 'public')));
 
+// Multer setup for file upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = "public/userprofile";
+    if (!fs.existsSync("public")) fs.mkdirSync("public");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  },
+});
+
+const upload = multer({ storage: storage });
 const {
    getSavedCelebrityCount,
   getFollowedCount,
@@ -11,7 +32,8 @@ const {
   getCollectionsHome,
   getUserCollections,
   getCollectionDetails,
-
+   getProfile,
+  updateProfile,
 } = require("../controllers/user-controller");
 
 
@@ -61,6 +83,17 @@ router.get(
   "/collection-details/:slug",
   getCollectionDetails
 );
+router.get("/profile/:userId", getProfile);
+
+
+router.patch(
+  "/profile/update/:userId",
+  upload.fields([
+    { name: "profileImage", maxCount: 1 },
+  ]),
+  updateProfile
+);
+
 
 
 module.exports = router;

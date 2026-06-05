@@ -121,6 +121,7 @@ app.use('/sectionmaster', express.static(path.join(__dirname, 'public/sectionmas
 
 app.use('/profile', express.static(path.join(__dirname, 'public/profile')));
 app.use('/testimonial', express.static(path.join(__dirname, 'public/testimonial')));
+app.use('/userprofile', express.static(path.join(__dirname, 'public/userprofile')));
 
 
 const safeTrackActivity = (req, res, next) => {

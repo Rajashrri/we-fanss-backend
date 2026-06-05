@@ -256,6 +256,7 @@ const verifyRegisterOtp = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        profileImage:user.profileImage
       },
     });
 
@@ -930,6 +931,8 @@ const getFollowedCount = async (req, res) => {
     });
   }
 };
+
+
 module.exports = {
   register,
   verifyRegisterOtp,
@@ -941,6 +944,7 @@ module.exports = {
     resetPassword,
     resendForgotOtp,
 changePassword,
+
 
 
 };
