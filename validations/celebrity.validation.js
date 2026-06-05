@@ -369,6 +369,35 @@ const createCelebratySchema = z.object({
           .trim()
           .max(60, "SEO meta title must be less than 60 characters")
           .optional(),
+
+
+  seoAltTagCatImg: z
+          .string({
+            invalid_type_error: "SEO meta title must be a string",
+          })
+          .trim()
+          .max(60, "SEO meta title must be less than 60 characters")
+          .optional(),
+
+
+            seoAltTagProImg: z
+          .string({
+            invalid_type_error: "SEO Alt Tag Category Image must be a string",
+          })
+          .trim()
+          .max(60, "SEO Alt Tag Category Image must be less than 60 characters")
+          .optional(),
+
+
+   seoSchemacode: z
+          .string({
+            invalid_type_error: "SEO meta description must be a string",
+          })
+          .trim()
+          .max(160, "SEO meta description must be less than 160 characters")
+          .optional(),
+
+
         seoMetaDescription: z
           .string({
             invalid_type_error: "SEO meta description must be a string",
@@ -702,6 +731,39 @@ const updateCelebratySchema = z.object({
             .trim()
             .max(60, "SEO meta title must be less than 60 characters")
             .optional(),
+
+
+  seoSlug: z
+    .string({
+      invalid_type_error: "SEO Slug must be a string",
+    })
+    .trim()
+    .max(200, "SEO Slug must be less than 200 characters")
+    .optional(),
+ seoAltTagCatImg: z
+            .string({
+              invalid_type_error: "SEO meta title must be a string",
+            })
+            .trim()
+            .max(60, "SEO meta title must be less than 60 characters")
+            .optional(),
+
+
+             seoAltTagProImg: z
+            .string({
+              invalid_type_error: "SEO meta title must be a string",
+            })
+            .trim()
+            .max(60, "SEO meta title must be less than 60 characters")
+            .optional(),
+ seoSchemacode: z
+            .string({
+              invalid_type_error: "SEO meta description must be a string",
+            })
+            .trim()
+            .max(160, "SEO meta description must be less than 160 characters")
+            .optional(),
+
           seoMetaDescription: z
             .string({
               invalid_type_error: "SEO meta description must be a string",

@@ -400,13 +400,13 @@ const getcelebratyByid = async (req, res, next) => {
   }
 };
 
-
 const updatecelebraty = async (req, res, next) => {
   try {
     const { id } = req.params;
-
+console.log("REQ BODY =", req.body);
+console.log("SEO FIELD =", req.body["seoMetadata[seoAltTagCatImg]"]);
+console.log("PRO FIELD =", req.body["seoMetadata[seoAltTagProImg]"]);
     console.log("Updating celebrity ID:", id);
-
     const {
       identityProfile,
       personalDetails,
@@ -422,8 +422,7 @@ const updatecelebraty = async (req, res, next) => {
       oldGallery,
       removeOldImage,
       removeOldCategoryImage, // ✅ ADD
-            removeOldFeaturedImage, // ✅ ADD
-
+      removeOldFeaturedImage, // ✅ ADD
     } = req.body;
 
     // ==================== FIND EXISTING CELEBRITY ====================
@@ -503,7 +502,7 @@ const updatecelebraty = async (req, res, next) => {
     }
 
     // ==================== HANDLE FILE UPLOADS ====================
- 
+
     // ================= IMAGE VARIABLES =================
     let profileImage = existingCelebraty.identityProfile?.image || "";
     let categoryImage = existingCelebraty.identityProfile?.categoryImage || "";
@@ -571,7 +570,6 @@ const updatecelebraty = async (req, res, next) => {
         mergedGallery = [...mergedGallery, ...galleryPaths];
       }
     }
-
 
     // ==================== PARSE JSON FIELDS ====================
     const parsedProfessions =
@@ -643,8 +641,7 @@ const updatecelebraty = async (req, res, next) => {
       updateFields["identityProfile.image"] = profileImage;
       updateFields["identityProfile.gallery"] = mergedGallery;
       updateFields["identityProfile.categoryImage"] = categoryImage; // ✅ ADD
-            updateFields["identityProfile.featuredImage"] = featuredImage; // ✅ ADD
-
+      updateFields["identityProfile.featuredImage"] = featuredImage; // ✅ ADD
     }
 
     // B) Personal Details
@@ -765,8 +762,10 @@ const updatecelebraty = async (req, res, next) => {
     if (parsedSocialLinks !== undefined)
       updateFields["socialLinks"] = parsedSocialLinks;
 
+
     // I) SEO Metadata
     if (seoMetadata) {
+       console.log("SEO BLOCK ENTERED");
       if (seoMetadata.tags !== undefined) {
         const parsedTags =
           typeof seoMetadata.tags === "string"
@@ -776,9 +775,22 @@ const updatecelebraty = async (req, res, next) => {
       }
       if (seoMetadata.seoMetaTitle !== undefined)
         updateFields["seoMetadata.seoMetaTitle"] = seoMetadata.seoMetaTitle;
+
+      if (seoMetadata.seoAltTagCatImg !== undefined)
+        updateFields["seoMetadata.seoAltTagCatImg"] =
+          seoMetadata.seoAltTagCatImg;
+
+
+      if (seoMetadata.seoAltTagProImg !== undefined)
+        updateFields["seoMetadata.seoAltTagProImg"] =
+          seoMetadata.seoAltTagProImg;
+
       if (seoMetadata.seoMetaDescription !== undefined)
         updateFields["seoMetadata.seoMetaDescription"] =
           seoMetadata.seoMetaDescription;
+
+      if (seoMetadata.seoSchemacode !== undefined)
+        updateFields["seoMetadata.seoSchemacode"] = seoMetadata.seoSchemacode;
       if (seoMetadata.seoKeywords !== undefined) {
         const parsedKeywords =
           typeof seoMetadata.seoKeywords === "string"
@@ -884,161 +896,6 @@ const updatecelebraty = async (req, res, next) => {
     next(error);
   }
 };
-
-
-// const updatecelebraty = async (req, res, next) => {
-//   try {
-//     const { id } = req.params;
-
-//     const {
-//       identityProfile,
-//       personalDetails,
-//       lifeStatus,
-//       familyRelationships,
-//       professionalIdentity,
-//       locationPresence,
-//       publicAttributes,
-//       socialLinks,
-//       seoMetadata,
-//       adminControls,
-//       status,
-//       oldGallery,
-//       removeOldImage,
-//       removeOldCategoryImage,
-//       removeOldFeaturedImage,
-//     } = req.body;
-
-//     const existingCelebraty = await Celebraty.findById(id);
-
-//     if (!existingCelebraty) {
-//       throw createHttpError(404, "Celebrity not found");
-//     }
-
-//     // ================= IMAGE VARIABLES =================
-//     let profileImage = existingCelebraty.identityProfile?.image || "";
-//     let categoryImage = existingCelebraty.identityProfile?.categoryImage || "";
-//     let featuredImage = existingCelebraty.identityProfile?.featuredImage || "";
-
-//     let mergedGallery = [];
-
-//     // ================= OLD GALLERY =================
-//     if (oldGallery) {
-//       if (typeof oldGallery === "string") {
-//         mergedGallery = JSON.parse(oldGallery);
-//       } else if (Array.isArray(oldGallery)) {
-//         mergedGallery = oldGallery;
-//       }
-//     }
-
-//     // ================= DELETE OLD IMAGES =================
-
-//     if (removeOldImage === true || removeOldImage === "true") {
-//       await deleteFromCloudinary(profileImage);
-//       profileImage = "";
-//     }
-
-//     if (removeOldCategoryImage === true || removeOldCategoryImage === "true") {
-//       await deleteFromCloudinary(categoryImage);
-//       categoryImage = "";
-//     }
-
-//     if (removeOldFeaturedImage === true || removeOldFeaturedImage === "true") {
-//       await deleteFromCloudinary(featuredImage);
-//       featuredImage = "";
-//     }
-
-//     // ================= NEW FILE UPLOAD =================
-//     if (
-//       req.files &&
-//       (req.files.image ||
-//         req.files.categoryimage ||
-//         req.files.featuredimage ||
-//         req.files.gallery)
-//     ) {
-//       const { imagePath, categoryImagePath, featuredImagePath, galleryPaths } =
-//         await processCelebrityFiles(req.files, id);
-
-//       // Profile Image
-//       if (imagePath) {
-//         await deleteFromCloudinary(profileImage);
-//         profileImage = imagePath;
-//       }
-
-//       // Category Image
-//       if (categoryImagePath) {
-//         await deleteFromCloudinary(categoryImage);
-//         categoryImage = categoryImagePath;
-//       }
-
-//       // Featured Image
-//       if (featuredImagePath) {
-//         await deleteFromCloudinary(featuredImage);
-//         featuredImage = featuredImagePath;
-//       }
-
-//       // Gallery Merge
-//       if (galleryPaths && galleryPaths.length > 0) {
-//         mergedGallery = [...mergedGallery, ...galleryPaths];
-//       }
-//     }
-
-//     // ================= UPDATE DATA =================
-//     const updateFields = {
-//       "identityProfile.image": profileImage,
-//       "identityProfile.categoryImage": categoryImage,
-//       "identityProfile.featuredImage": featuredImage,
-//       "identityProfile.gallery": mergedGallery,
-//       "auditTrail.updatedBy": req.user?.userId,
-//       moderationState: "PENDING",
-//       moderatedBy: null,
-//       moderatedAt: null,
-//       moderationRemark: null,
-//     };
-
-//     // Name
-//     if (identityProfile?.name) {
-//       updateFields["identityProfile.name"] = identityProfile.name;
-//     }
-
-//     if (identityProfile?.slug) {
-//       updateFields["identityProfile.slug"] = identityProfile.slug;
-//     }
-
-//     if (identityProfile?.shortinfo) {
-//       updateFields["identityProfile.shortinfo"] = identityProfile.shortinfo;
-//     }
-
-//     if (identityProfile?.biography) {
-//       updateFields["identityProfile.biography"] = identityProfile.biography;
-//     }
-
-//     if (status !== undefined) {
-//       updateFields["status"] = status;
-//     }
-
-//     // ================= UPDATE =================
-//     const updatedCelebraty = await Celebraty.findByIdAndUpdate(
-//       id,
-//       { $set: updateFields },
-//       { new: true, runValidators: true },
-//     )
-//       .populate("professionalIdentity.professions", "name")
-//       .populate("professionalIdentity.languages", "name")
-//       .populate("professionalIdentity.sections", "name")
-//       .populate("professionalIdentity.primaryProfession", "name")
-//       .populate("professionalIdentity.primaryLanguage", "name")
-//       .populate("socialLinks.platform", "name");
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Celebrity updated successfully",
-//       data: updatedCelebraty,
-//     });
-//   } catch (error) {
-//     console.error("❌ Error in updatecelebraty:", error);
-//     next(error);
-//   }
-// };
 
 /**
  * Update celebrity status (Active/Inactive at root level)
@@ -1146,13 +1003,14 @@ const deletecelebraty = async (req, res, next) => {
 
     // ================= DELETE RELATED TABLE DATA =================
     const deletedMovies = await Movie.deleteMany({ celebrityId: id });
-    const deletedSeries = await  Series.deleteMany({ celebrityId: id });
+    const deletedSeries = await Series.deleteMany({ celebrityId: id });
     const deletedElection = await Election.deleteMany({ celebrityId: id });
     const deletedPositions = await Positions.deleteMany({ celebrityId: id });
     const deletedTrivia = await Triviaentries.deleteMany({ celebrityId: id });
-    const deletedSections = await CelebratySectionModel.deleteMany({celebratyId: id });
-        const deletedTimeline = await Timeline.deleteMany({ celebrityId: id });
-
+    const deletedSections = await CelebratySectionModel.deleteMany({
+      celebratyId: id,
+    });
+    const deletedTimeline = await Timeline.deleteMany({ celebrityId: id });
 
     // ================= DELETE MAIN IMAGE =================
     if (celebrity.identityProfile?.image) {
@@ -1161,16 +1019,12 @@ const deletecelebraty = async (req, res, next) => {
 
     // ================= DELETE CATEGORY IMAGE =================
     if (celebrity.identityProfile?.categoryImage) {
-      await deleteFromCloudinary(
-        celebrity.identityProfile.categoryImage
-      );
+      await deleteFromCloudinary(celebrity.identityProfile.categoryImage);
     }
 
     // ================= DELETE FEATURED IMAGE =================
     if (celebrity.identityProfile?.featuredImage) {
-      await deleteFromCloudinary(
-        celebrity.identityProfile.featuredImage
-      );
+      await deleteFromCloudinary(celebrity.identityProfile.featuredImage);
     }
 
     // ================= DELETE GALLERY =================

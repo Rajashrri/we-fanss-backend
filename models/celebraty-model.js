@@ -298,11 +298,29 @@ const celebratySchema = new Schema(
         trim: true,
         maxlength: 60,
       },
+
+
+       seoAltTagCatImg: {
+        type: String,
+      },
+
+       seoAltTagProImg: {
+        type: String,
+      },
       seoMetaDescription: {
         type: String,
         trim: true,
         maxlength: 160,
       },
+
+    seoSchemacode: {
+        type: String,
+        trim: true,
+        maxlength: 160,
+      },
+
+
+      
       seoKeywords: [
         {
           type: String,
