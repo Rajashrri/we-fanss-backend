@@ -29,6 +29,7 @@ const googleLogin = async (req, res) => {
 
     const payload = ticket.getPayload();
     const { name, email, picture } = payload;
+console.log("Google Email:", payload.email);
 
     // ❌ ONLY CHECK USER (NO AUTO CREATE)
     let user = await Userlogin.findOne({ email });
